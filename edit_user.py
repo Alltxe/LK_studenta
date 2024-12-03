@@ -1,23 +1,16 @@
 import flet as ft
+
 from db_connection import create_connection, Error
 from werkzeug.security import generate_password_hash
 
 
-def main(page: ft.Page):
-    page.theme_mode = ft.ThemeMode.LIGHT
-    page.horizontal_alignment = ft.CrossAxisAlignment.CENTER
-    page.vertical_alignment = ft.MainAxisAlignment.START
-    page.padding = 20
-    page.scroll = "adaptive"
-    page.window.min_width = 450
-    page.window.min_height = 600
-
-
+def open(page: ft.Page, switch=None):
     disciplines = []
     group_value = ""
-    students = []
+    records = []
 
     connection = create_connection()
+    user_id = None
     if connection is None:
         exit("connection timed out")
 
@@ -59,21 +52,21 @@ def main(page: ft.Page):
 
 
     def load_students_from_group(group):
-        nonlocal students
+        nonlocal records
         try:
             cursor = connection.cursor()
             query = "SELECT idstudent, full_name FROM student where `group` = %s"
             cursor.execute(query, (group,))
-            students = cursor.fetchall()
+            records = cursor.fetchall()
             full_name_autocomplete.suggestions = [ft.AutoCompleteSuggestion(key=student[1], value=student[1])
-                                                  for student in students]
+                                                  for student in records]
             page.update()
 
         except Error as e:
             print(f"Ошибка при загрузке студентов: {e}")
 
     def load_teachers():
-        nonlocal students
+        nonlocal records
         try:
             cursor = connection.cursor()
             cursor.execute("SELECT idteacher, full_name FROM teacher")
@@ -102,23 +95,10 @@ def main(page: ft.Page):
         disciplines.clear()
         page.update()
 
-    navigation_bar = ft.Container(
-        content=ft.Row(
-            controls=[
-                ft.IconButton(icon=ft.icons.DATE_RANGE, tooltip="Календарь"),
-                ft.IconButton(icon=ft.icons.HOME, tooltip="Главная"),
-                ft.IconButton(icon=ft.icons.NOTIFICATIONS, tooltip="Уведомления"),
-            ],
-            alignment=ft.MainAxisAlignment.CENTER
-        ),
-        bgcolor=ft.colors.GREY_400,  # Установка цвета фона
-        padding=10
-    )
-
     # Контейнер для Chip элементов
     chips_container = ft.Row(
         controls=[],
-        wrap=True,  # Позволяет переносить элементы на следующую строку
+        wrap=True,
     )
 
     # Обновление отображения дисциплин
@@ -168,12 +148,9 @@ def main(page: ft.Page):
         group_value = e.selection.value
         load_students_from_group(group_value)
 
-    # Хранение списка студентов и текущего индекса
-    students = []
-    current_student_index = 0
 
     def full_name_select(e):
-        nonlocal disciplines
+        global full_name
         cursor = connection.cursor()
         full_name = e.selection.value
         if role_field.value == "Студент":
@@ -211,7 +188,7 @@ def main(page: ft.Page):
 
             # Функция для обновления данных на странице
         def update_data(index):
-            nonlocal disciplines
+            nonlocal disciplines, user_id
             login_field.value, birth_date_field.value, user_id = records[index][0:3:]
             if role_field.value == "Преподаватель":
                 phone_field.value = records[index][-1]
@@ -257,6 +234,76 @@ def main(page: ft.Page):
 
         page.update()
 
+    def update_user(e):
+        nonlocal user_id
+
+        if not user_id:
+            bottom_attention("Пользователь не найден")
+            return
+
+        if not role_field.value:
+            bottom_attention("Роль не выбрана")
+            return
+
+        cursor = connection.cursor()
+        role = role_field.value
+        login = login_field.value
+        password = password_field.value
+        birth_date = birth_date_field.value
+        phone_number = phone_field.value
+        if role == "Студент":
+
+            query = """
+                UPDATE student
+                SET full_name = %s, `group` = %s, birth_date = %s
+                WHERE idstudent = %s
+            """
+            cursor.execute(query, (full_name, group_value, birth_date, user_id))
+
+            query = """
+                UPDATE accounts
+                SET login = %s
+                WHERE idstudent = %s
+            """
+            cursor.execute(query, (login, user_id))
+
+        elif role == "Преподаватель":
+
+            query = """
+                UPDATE teacher
+                SET full_name = %s, birth_date = %s, phone_number = %s
+                WHERE idteacher = %s
+            """
+            cursor.execute(query, (full_name, birth_date, phone_number, user_id))
+
+            query = """
+                UPDATE accounts
+                SET login = %s
+                WHERE idteacher = %s
+            """
+            cursor.execute(query, (login, user_id))
+
+            # Обновляем дисциплины преподавателя
+            cursor.execute("DELETE FROM teacher_subjects WHERE teacher = %s", (user_id,))
+            query = "INSERT INTO teacher_subjects (teacher, subject) VALUES (%s, %s)"
+            for discipline in disciplines:
+                cursor.execute(query, (user_id, discipline))
+
+        if password:
+            hashed_password = generate_password_hash(password)
+            query = """
+                UPDATE accounts
+                SET login = %s, password = %s
+                WHERE idstudent = %s OR idteacher = %s
+            """
+            cursor.execute(query, (login, hashed_password, user_id, user_id))
+
+
+        connection.commit()
+        cursor.close()
+        bottom_attention("Данные успешно обновлены")
+        page.update()
+
     # Поля и кнопки для добавления/удаления дисциплин
     discipline_dropdown = ft.Dropdown(
         label="Выберите дисциплину",
@@ -284,8 +331,9 @@ def main(page: ft.Page):
     birth_date_field = ft.TextField(label="Дата рождения", hint_text="ГГГГ-мм-дд")
     login_field = ft.TextField(label="Логин", max_length=45)
     password_field = ft.TextField(label="Пароль", password=True, can_reveal_password=True, max_length=45)
-    phone_field = ft.TextField(label="Номер телефона", max_length=15, visible=False)
-    save_btn = ft.ElevatedButton(text="Изменить")
+    phone_field = ft.TextField(label="Номер телефона", max_length=20, visible=False)
+    save_btn = ft.ElevatedButton(text="Изменить", on_click=update_user)
+    mode_switch_btn = ft.ElevatedButton(text="Добавление", on_click=lambda e:switch(target="add mode page"))
 
     navigation_controls = ft.Row(
         controls=[],
@@ -333,7 +381,10 @@ def main(page: ft.Page):
     # Размещение элементов
     form = ft.Column(
         controls=[
-            role_field,
+            ft.Row(
+                controls=[role_field, mode_switch_btn],
+                alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
+            ),
             group_field,
             ft.Row(controls=[birth_date_field,date_pick_btn]),
             login_field,
@@ -351,7 +402,4 @@ def main(page: ft.Page):
     # Добавление элементов на страницу
     load_disciplines()
     load_groups()
-    page.add(navigation_bar,form)
-
-
-ft.app(target=main)
+    page.add(form)

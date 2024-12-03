@@ -2,8 +2,10 @@ import flet as ft
 from db_connection import create_connection, Error
 from werkzeug.security import generate_password_hash
 
+from test import edit_user_page
 
-def main(page: ft.Page):
+
+def open(page: ft.Page, switch=None):
     page.theme_mode = ft.ThemeMode.LIGHT
     page.horizontal_alignment = ft.CrossAxisAlignment.CENTER
     page.vertical_alignment = ft.MainAxisAlignment.START
@@ -135,19 +137,6 @@ def main(page: ft.Page):
         disciplines.clear()
         page.update()
 
-    navigation_bar = ft.Container(
-        content=ft.Row(
-            controls=[
-                ft.IconButton(icon=ft.icons.DATE_RANGE, tooltip="Календарь"),
-                ft.IconButton(icon=ft.icons.HOME, tooltip="Главная"),
-                ft.IconButton(icon=ft.icons.NOTIFICATIONS, tooltip="Уведомления"),
-            ],
-            alignment=ft.MainAxisAlignment.CENTER
-        ),
-        bgcolor=ft.colors.GREY_400,  # Установка цвета фона
-        padding=10
-    )
-
     # Контейнер для Chip элементов
     chips_container = ft.Row(
         controls=[],
@@ -229,8 +218,9 @@ def main(page: ft.Page):
     birth_date_field = ft.TextField(label="Дата рождения", hint_text="ГГГГ-мм-дд")
     login_field = ft.TextField(label="Логин", max_length=45)
     password_field = ft.TextField(label="Пароль", password=True, can_reveal_password=True, max_length=45)
-    phone_field = ft.TextField(label="Номер телефона", hint_text="+7 ХХХ ХХХ ХХ ХХ", max_length=15)
+    phone_field = ft.TextField(label="Номер телефона", hint_text="+7 ХХХ ХХХ ХХ ХХ", max_length=20, visible=False)
     save_btn = ft.ElevatedButton(text="Добавить/изменить", on_click=add_user)
+    mode_switch_btn = ft.ElevatedButton(text="Редактирование", on_click=lambda e: switch(target="edit mode page"))
 
     full_name_field = ft.TextField(label="ФИО", expand=True)
 
@@ -257,7 +247,8 @@ def main(page: ft.Page):
     form = ft.Column(
         controls=[
             ft.Row(
-                controls=[role_field, load_list_btn],
+                controls=[role_field,
+                ft.Row(controls=[load_list_btn, mode_switch_btn])],
                 alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
             ),
             group_field,
@@ -277,7 +268,5 @@ def main(page: ft.Page):
     # Добавление элементов на страницу
     load_disciplines()
     load_groups()
-    page.add(navigation_bar,form)
+    page.add(form)
 
-
-ft.app(target=main)

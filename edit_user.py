@@ -68,7 +68,19 @@ def main(page: ft.Page):
             full_name_autocomplete.suggestions = [ft.AutoCompleteSuggestion(key=student[1], value=student[1])
                                                   for student in students]
             page.update()
-            print(students)
+
+        except Error as e:
+            print(f"Ошибка при загрузке студентов: {e}")
+
+    def load_teachers():
+        nonlocal students
+        try:
+            cursor = connection.cursor()
+            cursor.execute("SELECT idteacher, full_name FROM teacher")
+            teachers = cursor.fetchall()
+            full_name_autocomplete.suggestions = [ft.AutoCompleteSuggestion(key=teacher[1], value=teacher[1])
+                                                  for teacher in teachers]
+            page.update()
 
         except Error as e:
             print(f"Ошибка при загрузке студентов: {e}")
@@ -78,70 +90,6 @@ def main(page: ft.Page):
         snackbar.content = ft.Text(text)
         snackbar.open = True
         page.update()
-
-    def add_user(e):
-        fields = [
-            (role_field.value, "Роль не выбрана"),
-            (login_field.value, "Логин не введен"),
-            (password_field.value, "Пароль не введен"),
-            (full_name_field.value, "ФИО не введено"),
-            (birth_date_field.value, "Дата рождения не выбрана")
-        ]
-
-        for value, message in fields:
-            if not value:
-                bottom_attention(message)
-                return
-
-        cursor = connection.cursor()
-        login = login_field.value
-        password = generate_password_hash(password_field.value)
-        birth_date = birth_date_field.value
-        role = role_field.value
-        full_name = full_name_field.value
-        phone_number = phone_field.value
-
-        cursor.execute(f"SELECT COUNT(*) FROM accounts WHERE login = %s", (login,))
-        if cursor.fetchone()[0] > 0:
-            bottom_attention("Логин уже существует")
-            cursor.close()
-            return
-
-        if role == "Преподаватель":
-            query = "INSERT INTO teacher(full_name, birth_date, phone_number) VALUES (%s, %s, %s)"
-            cursor.execute(query, (full_name, birth_date, phone_number))
-            cursor.execute("SELECT LAST_INSERT_ID()")
-            teacher_id = cursor.fetchone()[0]
-
-            query = "INSERT INTO teacher_subjects(teacher, subject) VALUES (%s, %s)"
-            for i in disciplines:
-                cursor.execute(query,(teacher_id, i))
-            query = "INSERT INTO accounts(login, password, role, idteacher) VALUES (%s, %s, %s, %s)"
-            cursor.execute(query, (login, password, "teacher", teacher_id))
-
-        if role == "Студент":
-            # Проверяем существование group_value
-            cursor.execute("SELECT COUNT(*) FROM st_groups WHERE idgroups = %s", (group_value,))
-            if cursor.fetchone()[0] == 0:
-                bottom_attention("Группа с таким значением не существует")
-                return
-
-            # Добавляем запись в таблицу student
-            query = "INSERT INTO student (full_name, `group`, birth_date) VALUES (%s, %s, %s)"
-            cursor.execute(query, (full_name, group_value, birth_date))
-
-            # Получаем id добавленной записи
-            cursor.execute("SELECT LAST_INSERT_ID()")
-            student_id = cursor.fetchone()[0]
-
-            # Добавляем запись в accounts
-            query = "INSERT INTO accounts (login, password, role, idstudent) VALUES (%s, %s, %s, %s)"
-            cursor.execute(query, (login, password, "student", student_id))
-
-        connection.commit()
-        cursor.close()
-        bottom_attention("Учетная запись успешно добавлена")
-        clear_page()
 
     def clear_page():
         role_field.value = None
@@ -192,21 +140,22 @@ def main(page: ft.Page):
             disciplines.append(selected)
             update_disciplines_display()
 
-    # Удаление дисциплины
     def remove_discipline(discipline):
         if discipline in disciplines:
             disciplines.remove(discipline)
             update_disciplines_display()
 
-    # Обработка изменения роли
     def on_role_change(e):
         if role_field.value == "Преподаватель":
-            disciplines_section.visible = True  # Показываем элементы для дисциплин
+            load_teachers()
+            disciplines_section.visible = True
             group_field.visible = False
+            phone_field.visible = True
         else:
-            disciplines_section.visible = False  # Скрываем элементы для дисциплин
+            disciplines_section.visible = False
             group_field.visible = True
-            disciplines.clear()  # Удаляем все дисциплины
+            phone_field.visible = False
+            disciplines.clear()
             update_disciplines_display()
         page.update()
 
@@ -224,11 +173,11 @@ def main(page: ft.Page):
     current_student_index = 0
 
     def full_name_select(e):
+        nonlocal disciplines
         cursor = connection.cursor()
+        full_name = e.selection.value
         if role_field.value == "Студент":
-            full_name = e.selection.value
 
-            # Запрос всех записей с одинаковым ФИО
             query = ("""
                 SELECT accounts.login, student.birth_date, student.idstudent
                 FROM student
@@ -236,48 +185,77 @@ def main(page: ft.Page):
                 WHERE student.full_name = %s
             """)
             cursor.execute(query, (full_name,))
-            students = cursor.fetchall()
+            records = cursor.fetchall()
 
-            if not students:
+            if not records:
                 bottom_attention("Данные не найдены")
                 return
 
-            # Индекс текущей записи
-            current_index = 0
+        if role_field.value == "Преподаватель":
+
+            query = ("""
+                SELECT accounts.login, teacher.birth_date, teacher.idteacher, teacher.phone_number
+                FROM teacher
+                JOIN accounts ON accounts.idteacher = teacher.idteacher
+                WHERE teacher.full_name = %s
+            """)
+            cursor.execute(query, (full_name,))
+            records = cursor.fetchall()
+
+            if not records:
+                bottom_attention("Данные не найдены")
+                return
+
+
+        current_index = 0
 
             # Функция для обновления данных на странице
-            def update_student_data(index):
-                login_field.value, birth_date_field.value, _ = students[index]
-                page.update()
+        def update_data(index):
+            nonlocal disciplines
+            login_field.value, birth_date_field.value, user_id = records[index][0:3:]
+            if role_field.value == "Преподаватель":
+                phone_field.value = records[index][-1]
+                query = ("""
+                SELECT s.subject_name
+                FROM teacher t
+                JOIN teacher_subjects ts ON t.idteacher = ts.teacher
+                JOIN subject s ON ts.subject = s.subject_name
+                WHERE t.idteacher = %s
+                """)
+                cursor.execute(query, (user_id,))
+                rows = cursor.fetchall()
+                disciplines = [row[0] for row in rows]
+                update_disciplines_display()
 
-            # Обработчики кнопок переключения
-            def prev_student(e):
-                nonlocal current_index
-                if current_index > 0:
-                    current_index -= 1
-                    update_student_data(current_index)
-
-            def next_student(e):
-                nonlocal current_index
-                if current_index < len(students) - 1:
-                    current_index += 1
-                    update_student_data(current_index)
-
-            # Обновление данных первой записи
-            update_student_data(current_index)
-
-            # Добавление кнопок навигации, если студентов с одинаковым ФИО больше одного
-            if len(students) > 1:
-                # Если более одного студента с таким ФИО, показываем навигацию
-                navigation_controls.controls = [
-                    ft.ElevatedButton(text="<", on_click=prev_student),
-                    ft.ElevatedButton(text=">", on_click=next_student),
-                ]
-            else:
-                # Если только один студент с таким ФИО, скрываем навигацию
-                navigation_controls.controls = []
 
             page.update()
+
+        # Обработчики кнопок переключения
+        def prev_record(e):
+            nonlocal current_index
+            if current_index > 0:
+                current_index -= 1
+                update_data(current_index)
+
+        def next_record(e):
+            nonlocal current_index
+            if current_index < len(records) - 1:
+                current_index += 1
+                update_data(current_index)
+
+        # Обновление данных первой записи
+        update_data(current_index)
+
+        # Добавление кнопок навигации, если студентов с одинаковым ФИО больше одного
+        if len(records) > 1:
+            navigation_controls.controls = [
+                ft.ElevatedButton(text="<", on_click=prev_record),
+                ft.ElevatedButton(text=">", on_click=next_record),
+            ]
+        else:
+            navigation_controls.controls = []
+
+        page.update()
 
     # Поля и кнопки для добавления/удаления дисциплин
     discipline_dropdown = ft.Dropdown(
@@ -306,8 +284,8 @@ def main(page: ft.Page):
     birth_date_field = ft.TextField(label="Дата рождения", hint_text="ГГГГ-мм-дд")
     login_field = ft.TextField(label="Логин", max_length=45)
     password_field = ft.TextField(label="Пароль", password=True, can_reveal_password=True, max_length=45)
-    phone_field = ft.TextField(label="Номер телефона", hint_text="+7 ХХХ ХХХ ХХ ХХ", max_length=15)
-    save_btn = ft.ElevatedButton(text="Добавить/изменить", on_click=add_user)
+    phone_field = ft.TextField(label="Номер телефона", max_length=15, visible=False)
+    save_btn = ft.ElevatedButton(text="Изменить")
 
     navigation_controls = ft.Row(
         controls=[],
@@ -374,5 +352,6 @@ def main(page: ft.Page):
     load_disciplines()
     load_groups()
     page.add(navigation_bar,form)
+
 
 ft.app(target=main)

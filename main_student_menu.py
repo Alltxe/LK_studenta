@@ -1,18 +1,7 @@
 import flet as ft
 
 
-def main(page: ft.Page):
-    # Set page properties
-    page.title = "Test"
-    page.theme_mode = ft.ThemeMode.LIGHT
-    page.horizontal_alignment = ft.CrossAxisAlignment.CENTER
-    page.vertical_alignment = ft.MainAxisAlignment.START
-    page.padding = 20
-    page.scroll = "adaptive"
-    page.window.min_width = 450
-    page.window.min_height = 600
-    main_text = ft.TextThemeStyle.HEADLINE_MEDIUM
-
+def open(page: ft.Page):
 
     def show_info(e):
         dialog = ft.AlertDialog(
@@ -23,19 +12,6 @@ def main(page: ft.Page):
         dialog.open = True
         page.update()
 
-    # Header with buttons and icons
-    navigation_bar = ft.Container(
-        content=ft.Row(
-            controls=[
-                ft.IconButton(icon=ft.icons.DATE_RANGE, tooltip="Календарь"),
-                ft.IconButton(icon=ft.icons.HOME, tooltip="Главная"),
-                ft.IconButton(icon=ft.icons.NOTIFICATIONS, tooltip="Уведомления"),
-            ],
-            alignment=ft.MainAxisAlignment.CENTER
-        ),
-        bgcolor=ft.colors.GREY_400,  # Установка цвета фона
-        padding=10
-    )
 
     # Title section
     title_text = ft.Text("Добро пожаловать USER", style=ft.TextThemeStyle.HEADLINE_LARGE)
@@ -87,7 +63,7 @@ def main(page: ft.Page):
         border=ft.border.all(1, "black"),
         padding=10,
         expand=True,
-        height=300,  # Совпадающая высота
+        height=300,
         alignment=ft.alignment.top_right
     )
 
@@ -95,12 +71,8 @@ def main(page: ft.Page):
     main_layout = ft.Row(
         controls=[schedule_box, task_box],
         spacing=20,
-        expand=True  # Расширение основного макета
+        expand=True
     )
 
     # Add everything to the page
-    page.add(navigation_bar, title_column, main_layout)
-
-
-# Start the app
-ft.app(target=main)
+    page.add(title_column, main_layout)

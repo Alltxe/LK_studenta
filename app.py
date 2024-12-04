@@ -1,5 +1,6 @@
 import flet as ft
-import edit_user, add_user
+
+import edit_user, add_user, main_student_menu
 
 def main(page: ft.Page):
     page.theme_mode = ft.ThemeMode.LIGHT
@@ -10,11 +11,12 @@ def main(page: ft.Page):
     page.window.min_width = 450
     page.window.min_height = 600
 
+
     navigation_bar = ft.Container(
         content=ft.Row(
             controls=[
                 ft.IconButton(icon=ft.icons.DATE_RANGE, tooltip="Календарь"),
-                ft.IconButton(icon=ft.icons.HOME, tooltip="Главная"),
+                ft.IconButton(icon=ft.icons.HOME, tooltip="Главная", on_click=lambda e:page_switch(target="main menu")),
                 ft.IconButton(icon=ft.icons.NOTIFICATIONS, tooltip="Уведомления"),
             ],
             alignment=ft.MainAxisAlignment.CENTER
@@ -30,6 +32,8 @@ def main(page: ft.Page):
             edit_user.open(page, page_switch)
         elif target == "add mode page":
             add_user.open(page, page_switch)
+        elif target == "main menu":
+            main_student_menu.open(page)
 
 
     page_switch()

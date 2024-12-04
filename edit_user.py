@@ -1,4 +1,5 @@
 import flet as ft
+from oauthlib.uri_validate import query
 
 from db_connection import create_connection, Error
 from werkzeug.security import generate_password_hash
@@ -304,7 +305,21 @@ def open(page: ft.Page, switch=None):
         bottom_attention("Данные успешно обновлены")
         page.update()
 
-    # Поля и кнопки для добавления/удаления дисциплин
+    def delete_user(e):
+        cursor = connection.cursor()
+        try:
+            if role_field.value == "Преподаватель":
+                cursor.execute("DELETE FROM teacher WHERE `idteacher` = %s", (user_id,))
+            elif role_field.value == "Студент":
+                cursor.execute("DELETE FROM student WHERE `idstudent` = %s", (user_id,))
+            connection.commit()
+            cursor.close()
+            bottom_attention("Пользватель удален успешно")
+            clear_page()
+            page.update()
+        except Error as e:
+            print(e)
+
     discipline_dropdown = ft.Dropdown(
         label="Выберите дисциплину",
         expand=False
@@ -318,7 +333,7 @@ def open(page: ft.Page, switch=None):
             ft.dropdown.Option("Преподаватель"),
         ],
         label="Роль",
-        on_change=on_role_change,  # Обработка изменения роли
+        on_change=on_role_change,
     )
     group_autocomplete = ft.AutoComplete(on_select=group_select)
     group_field = ft.Row(
@@ -334,6 +349,8 @@ def open(page: ft.Page, switch=None):
     phone_field = ft.TextField(label="Номер телефона", max_length=20, visible=False)
     save_btn = ft.ElevatedButton(text="Изменить", on_click=update_user)
     mode_switch_btn = ft.ElevatedButton(text="Добавление", on_click=lambda e:switch(target="add mode page"))
+    delete_btn = ft.ElevatedButton(text="Удалить", bgcolor=ft.colors.RED_400,
+                                   color = ft.colors.WHITE, on_click=delete_user)
 
     navigation_controls = ft.Row(
         controls=[],
@@ -378,7 +395,7 @@ def open(page: ft.Page, switch=None):
         visible=False,
     )
 
-    # Размещение элементов
+
     form = ft.Column(
         controls=[
             ft.Row(
@@ -392,14 +409,15 @@ def open(page: ft.Page, switch=None):
             full_name_field,
             phone_field,
             disciplines_section,
-            save_btn,
+            ft.Row(controls=[save_btn, delete_btn],
+                   alignment= ft.MainAxisAlignment.SPACE_BETWEEN),
             snackbar,
         ],
         alignment=ft.MainAxisAlignment.START,
         expand=False,
     )
 
-    # Добавление элементов на страницу
+
     load_disciplines()
     load_groups()
     page.add(form)

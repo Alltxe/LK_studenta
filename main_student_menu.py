@@ -2,6 +2,8 @@ import flet as ft
 
 
 def open(page: ft.Page):
+    main_text = ft.TextThemeStyle.HEADLINE_MEDIUM
+
 
     def show_info(e):
         dialog = ft.AlertDialog(

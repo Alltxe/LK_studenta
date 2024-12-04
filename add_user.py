@@ -2,8 +2,6 @@ import flet as ft
 from db_connection import create_connection, Error
 from werkzeug.security import generate_password_hash
 
-from test import edit_user_page
-
 
 def open(page: ft.Page, switch=None):
     page.theme_mode = ft.ThemeMode.LIGHT

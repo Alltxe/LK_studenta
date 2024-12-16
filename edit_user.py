@@ -1,5 +1,4 @@
 import flet as ft
-from oauthlib.uri_validate import query
 
 from db_connection import create_connection, Error
 from werkzeug.security import generate_password_hash

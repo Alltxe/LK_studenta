@@ -8,7 +8,7 @@ def main(page: ft.Page):
     page.vertical_alignment = ft.MainAxisAlignment.START
     page.padding = 20
     page.scroll = "adaptive"
-    page.window.min_width = 450
+    page.window.min_width = 1200
     page.window.min_height = 600
 
 

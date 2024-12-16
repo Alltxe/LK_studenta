@@ -47,7 +47,6 @@ def open(page: ft.Page, switch=None):
             rows = cursor.fetchall()
             groups = [row[0] for row in rows]
 
-            # Обновление опций в Dropdown
             group_autocomplete.suggestions = [ft.AutoCompleteSuggestion(key=group, value=group) for group in groups]
 
             page.update()

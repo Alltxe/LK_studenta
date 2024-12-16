@@ -140,7 +140,7 @@ def open(page: ft.Page, switch=None):
             update_disciplines_display()
         page.update()
 
-    def data_change(e):
+    def date_change(e):
         birth_date_field.value = e.control.value.strftime("%Y-%m-%d")
         page.update()
 
@@ -379,7 +379,7 @@ def open(page: ft.Page, switch=None):
 
     date_pick_btn = ft.ElevatedButton(icon=ft.icons.CALENDAR_MONTH, on_click=lambda e:
                                       page.open(ft.DatePicker(
-                                        on_change=data_change
+                                        on_change=date_change
                                       )),text="выбрать дату")
 
     snackbar = ft.SnackBar(ft.Text(""))

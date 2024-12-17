@@ -1,9 +1,41 @@
+
 import flet as ft
+from datetime import date, timedelta
+from db_connection import create_connection
 
 
-def open(page: ft.Page):
+def open(page: ft.Page, connection=None):
+    page.theme_mode = ft.ThemeMode.LIGHT
     main_text = ft.TextThemeStyle.HEADLINE_MEDIUM
+    page.horizontal_alignment = ft.CrossAxisAlignment.CENTER
+    page.vertical_alignment = ft.MainAxisAlignment.START
+    page.padding = 20
+    connection = create_connection()
+    group = "ИСПк-201-52-00"
 
+    def get_day_schedule(selected_day):
+        try:
+            cursor = connection.cursor()
+
+            print(group, selected_day)
+
+            query = """
+            SELECT date, subject, location, class_type
+            FROM schedule 
+            WHERE `group` = %s AND DATE(date) = %s
+            ORDER BY date
+            """
+            cursor.execute(query, (group, selected_day))
+
+            # Получаем расписание
+            schedule_data = cursor.fetchall()
+
+            cursor.close()
+
+            return schedule_data
+        except Exception as err:
+            print(f"Ошибка выполнения запроса: {err}")
+            return []
 
     def show_info(e):
         dialog = ft.AlertDialog(
@@ -25,21 +57,35 @@ def open(page: ft.Page):
 
     # Schedule section
     schedule_title = ft.Text("Расписание на завтра", style=main_text)
-    schedule_table = ft.Column(
-        controls=[
-            ft.Row([ft.Text("..."), ft.Text("x-xxx")]),
-            ft.Row([ft.Text("..."), ft.Text("x-xxx")]),
-            ft.Row([ft.Text("..."), ft.Text("x-xxx")]),
+    schedule_table = ft.DataTable(
+        expand=True,
+        columns=[
+            ft.DataColumn(ft.Text("Время", weight=ft.FontWeight.BOLD)),
+            ft.DataColumn(ft.Text("Дисциплина", weight=ft.FontWeight.BOLD)),
+            ft.DataColumn(ft.Text("Кабинет", weight=ft.FontWeight.BOLD)),
+            ft.DataColumn(ft.Text("Тип занятия", weight=ft.FontWeight.BOLD))
         ],
-        expand=True
+        rows=[],
     )
+
+    student_schedule = get_day_schedule(date.today() + timedelta(1))
+    print(student_schedule, date.today() + timedelta(1))
+    for lesson in student_schedule:
+        lesson_date, subject, location, class_type = lesson
+        lesson_time = lesson_date.strftime('%H:%M')
+
+        schedule_table.rows.append(ft.DataRow(cells=[
+            ft.DataCell(ft.Text(lesson_time)),
+            ft.DataCell(ft.Text(subject)),
+            ft.DataCell(ft.Text(location)),
+            ft.DataCell(ft.Text(class_type))
+        ]))
 
     schedule_box = ft.Container(
         ft.Column([schedule_title, schedule_table]),
         border_radius=8,
         border=ft.border.all(1, "black"),
         padding=10,
-        expand=True,
         height=300,  # Установлена одинаковая высота для обоих контейнеров
         alignment=ft.alignment.top_left
     )
@@ -76,5 +122,8 @@ def open(page: ft.Page):
         expand=True
     )
 
-    # Add everything to the page
+
     page.add(title_column, main_layout)
+
+if __name__ == '__main__':
+    ft.app(target=open)

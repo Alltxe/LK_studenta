@@ -5,8 +5,7 @@ from datetime import datetime, timedelta, date
 
 
 
-def open(page: ft.Page):
-    connection = create_connection()
+def open(page: ft.Page, connection):
     disciplines = []
     teachers = []
     group_value = ""
@@ -176,12 +175,13 @@ def open(page: ft.Page):
     # Функция изменения даты
     def shift_date(e, delta):
         if not date_f.value:  # Если дата еще не выбрана, устанавливаем текущую дату
-            current_date = datetime.date.today()
+            current_date = date.today()
         else:
-            current_date = datetime.datetime.strptime(date_f.value, "%Y-%m-%d").date()
+            current_date = datetime.strptime(date_f.value, "%Y-%m-%d").date()
 
-        new_date = current_date + datetime.timedelta(days=delta)
+        new_date = current_date + timedelta(days=delta)
         date_f.value = new_date.strftime("%Y-%m-%d")
+        load_schedule()
         page.update()
 
     # Функция для обработки выбора даты в календаре
@@ -194,7 +194,6 @@ def open(page: ft.Page):
         group_value = e.selection.value
         load_schedule()
 
-    # Поле ввода группы (без изменений)
     group_autocomplete = ft.AutoComplete(on_select=group_select)
     group_field = ft.Column(
         controls=[
@@ -284,7 +283,7 @@ def open(page: ft.Page):
     load_disciplines()
     load_teachers()
 
-    table_rows = [create_table_row(time = '08:20 - 09:40'),
+    table_rows = [create_table_row(time = '08:20 - 09:50'),
                   create_table_row(time = '10:00 - 11:30'),
                   create_table_row(time = '11:45 - 13:15'),
                   create_table_row(time = '14:00 - 15:30'),
@@ -309,12 +308,9 @@ def open(page: ft.Page):
         ft.Divider(thickness=1),
         table,
         save_btn,
-    ], spacing=20)
+    ], spacing=10)
 
     load_groups()
 
     page.add(layout)
     page.update()
-
-if __name__ == '__main__':
-    ft.app(target=open)

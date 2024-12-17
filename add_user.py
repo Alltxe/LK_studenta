@@ -3,7 +3,7 @@ from db_connection import create_connection, Error
 from werkzeug.security import generate_password_hash
 
 
-def open(page: ft.Page, switch=None):
+def open(page: ft.Page, connection, switch=None):
     page.theme_mode = ft.ThemeMode.LIGHT
     page.horizontal_alignment = ft.CrossAxisAlignment.CENTER
     page.vertical_alignment = ft.MainAxisAlignment.START
@@ -16,7 +16,6 @@ def open(page: ft.Page, switch=None):
     disciplines = []
     group_value = ""
 
-    connection = create_connection()
     if connection is None:
         exit("connection timed out")
 

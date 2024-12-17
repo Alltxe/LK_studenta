@@ -1,15 +1,14 @@
 import flet as ft
 
-from db_connection import create_connection, Error
+from db_connection import Error
 from werkzeug.security import generate_password_hash
 
 
-def open(page: ft.Page, switch=None):
+def open(page: ft.Page, connection, switch=None):
     disciplines = []
     group_value = ""
     records = []
 
-    connection = create_connection()
     user_id = None
     if connection is None:
         exit("connection timed out")

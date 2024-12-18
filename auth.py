@@ -13,13 +13,13 @@ def open(page: ft.Page, connection, switch, callback):
 
         if account and check_password_hash(account[1], password):
             role = account[4]
+            callback(role, username)
             if role == 'teacher':
-                switch(target="edit mode page")
+                switch(target="")
             elif role == 'student':
                 switch(target="main menu")
             elif role == 'admin':
                 switch(target="add mode page")
-            callback(role, username)
         else:
             snackbar = ft.SnackBar(content=ft.Text("Неправильный логин или пароль"))
             snackbar.open = True

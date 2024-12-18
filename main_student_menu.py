@@ -4,20 +4,17 @@ from datetime import date, timedelta
 from db_connection import create_connection
 
 
-def open(page: ft.Page, connection=None):
+def open(page: ft.Page, connection, group, fio):
     page.theme_mode = ft.ThemeMode.LIGHT
     main_text = ft.TextThemeStyle.HEADLINE_MEDIUM
     page.horizontal_alignment = ft.CrossAxisAlignment.CENTER
     page.vertical_alignment = ft.MainAxisAlignment.START
     page.padding = 20
-    connection = create_connection()
-    group = "ИСПк-201-52-00"
+
 
     def get_day_schedule(selected_day):
         try:
             cursor = connection.cursor()
-
-            print(group, selected_day)
 
             query = """
             SELECT date, subject, location, class_type
@@ -48,7 +45,7 @@ def open(page: ft.Page, connection=None):
 
 
     # Title section
-    title_text = ft.Text("Добро пожаловать USER", style=ft.TextThemeStyle.HEADLINE_LARGE)
+    title_text = ft.Text(f"Добро пожаловать {fio}", style=ft.TextThemeStyle.HEADLINE_LARGE)
 
     title_column = ft.Column(
         controls=[title_text],

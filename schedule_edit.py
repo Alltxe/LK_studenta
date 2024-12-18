@@ -1,6 +1,6 @@
 import flet as ft
 
-from db_connection import create_connection, Error
+from db_connection import Error
 from datetime import datetime, timedelta, date
 
 
@@ -213,11 +213,6 @@ def open(page: ft.Page, connection):
     date_f = ft.TextField(width=200, read_only=True, value=date.today().strftime("%Y-%m-%d"),
                         border=ft.InputBorder.NONE, content_padding= 10)
 
-    group_field = ft.Column(
-        controls = [ft.Text("Группа", theme_style=ft.TextThemeStyle.BODY_LARGE),
-            ft.Container(content=group_autocomplete,
-                               border=ft.border.all(1,ft.colors.BLACK), border_radius=ft.border_radius.all(5),
-                               padding=ft.padding.only(5,0,0,5), height=50, width=250)],)
 
     date_field = ft.Container(
         content=ft.Column([

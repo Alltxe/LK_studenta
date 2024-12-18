@@ -1,18 +1,21 @@
 import flet as ft
 
-import edit_user, add_user, main_student_menu, auth, schedule_edit, schedule, add_task
+import edit_user, add_user, main_student_menu, auth, schedule_edit, schedule, add_task, task_info
 from db_connection import create_connection
 
 
 def main(page: ft.Page):
     global navigation_bar
+    page.title = "Личный кабинет студента"
+    page.scroll = ft.ScrollMode.ADAPTIVE
     page.theme_mode = ft.ThemeMode.LIGHT
     page.horizontal_alignment = ft.CrossAxisAlignment.CENTER
     page.vertical_alignment = ft.MainAxisAlignment.START
     page.padding = 20
     page.window.min_width = 1200
-    page.window.min_height = 60
+    page.window.min_height = 700
     group = ''
+    id = 0
     fio = ''
 
 
@@ -38,11 +41,14 @@ def main(page: ft.Page):
         elif target == "schedule view":
             schedule.open(page, connection, group)
         elif target == "add task":
-            add_task.open(page)
+            add_task.open(page, connection, id)
+        elif target == "task info":
+            task_info.open(page, connection, id)
+
 
 
     def callback(role, login=None):
-        nonlocal group, fio
+        nonlocal group, fio, id
         if role == 'admin':
             navigation_bar.content = ft.Row([ft.IconButton(icon=ft.icons.PEOPLE, tooltip="Добавить пользователя",
                                                            on_click=lambda e: page_switch(target="add mode page")),
@@ -57,6 +63,7 @@ def main(page: ft.Page):
                                 WHERE login = %s""",
                            (login,))
             group, fio = cursor.fetchone()
+            cursor.close()
             navigation_bar.content = ft.Row([ft.IconButton(icon=ft.icons.CALENDAR_MONTH, tooltip="Расписание",
                                                            on_click=lambda e: page_switch(target="schedule view")),
                                              ft.IconButton(icon=ft.icons.HOME, tooltip="Главное меню",
@@ -64,10 +71,15 @@ def main(page: ft.Page):
                                             alignment=ft.MainAxisAlignment.CENTER)
         elif role == 'teacher':
             navigation_bar.content = ft.Row([ft.IconButton(icon=ft.icons.EDIT_DOCUMENT, tooltip="Добавление задания",
-                                                           on_click=lambda e: page_switch(target="schedule view")),
-                                             ft.IconButton(icon=ft.icons.TABLE_CHART_ROUNDED, tooltip="Главное меню",
-                                                           on_click=lambda e: page_switch(target="main menu"))],
+                                                           on_click=lambda e: page_switch(target="add task")),
+                                             ft.IconButton(icon=ft.icons.TABLE_CHART_ROUNDED, tooltip="Выполнение заданий",
+                                                           on_click=lambda e: page_switch(target="task info"))],
                                             alignment=ft.MainAxisAlignment.CENTER)
+            cursor = connection.cursor()
+            cursor.execute("""SELECT t.idteacher FROM accounts a JOIN teacher t ON a.idteacher = t.idteacher
+                                WHERE login = %s""", (login,))
+            id = cursor.fetchone()[0]
+            cursor.close()
 
     auth.open(page, connection, page_switch, callback)
 

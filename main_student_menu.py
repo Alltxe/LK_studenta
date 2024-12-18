@@ -66,7 +66,6 @@ def open(page: ft.Page, connection, group, fio):
     )
 
     student_schedule = get_day_schedule(date.today() + timedelta(1))
-    print(student_schedule, date.today() + timedelta(1))
     for lesson in student_schedule:
         lesson_date, subject, location, class_type = lesson
         lesson_time = lesson_date.strftime('%H:%M')
@@ -83,7 +82,7 @@ def open(page: ft.Page, connection, group, fio):
         border_radius=8,
         border=ft.border.all(1, "black"),
         padding=10,
-        height=300,  # Установлена одинаковая высота для обоих контейнеров
+        height=460,  # Установлена одинаковая высота для обоих контейнеров
         alignment=ft.alignment.top_left
     )
 
@@ -108,7 +107,7 @@ def open(page: ft.Page, connection, group, fio):
         border=ft.border.all(1, "black"),
         padding=10,
         expand=True,
-        height=300,
+        height=460,
         alignment=ft.alignment.top_right
     )
 
@@ -121,6 +120,3 @@ def open(page: ft.Page, connection, group, fio):
 
 
     page.add(title_column, main_layout)
-
-if __name__ == '__main__':
-    ft.app(target=open)

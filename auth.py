@@ -10,6 +10,7 @@ def open(page: ft.Page, connection, switch, callback):
         query = "SELECT * FROM accounts WHERE login = %s"
         cursor.execute(query, (username,))
         account = cursor.fetchone()
+        cursor.close()
 
         if account and check_password_hash(account[1], password):
             role = account[4]

@@ -49,7 +49,7 @@ def generate_test_data(num_students=50, num_teachers=10):
     # Генерация преподавателей
     for _ in range(num_teachers):
         full_name = fake.name()
-        birth_date = fake.date_of_birth(minimum_age=30, maximum_age=60)
+        birth_date = fake.date_of_birth(minimum_age=15, maximum_age=60)
         phone_number = fake.phone_number()
         login = fake.user_name()
         password = generate_password_hash("teacherpass123")  # Статический пароль для теста

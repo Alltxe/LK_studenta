@@ -1,6 +1,7 @@
 import flet as ft
 from db_connection import create_connection, Error
 from werkzeug.security import generate_password_hash
+from datetime import datetime
 
 
 def open(page: ft.Page, connection, switch=None):
@@ -75,7 +76,7 @@ def open(page: ft.Page, connection, switch=None):
         cursor = connection.cursor()
         login = login_field.value
         password = generate_password_hash(password_field.value)
-        birth_date = birth_date_field.value
+        birth_date = datetime.strptime(birth_date_field.value, "%d-%m-%Y").strftime("%Y-%m-%d")
         role = role_field.value
         full_name = full_name_field.value
         phone_number = phone_field.value
@@ -179,7 +180,7 @@ def open(page: ft.Page, connection, switch=None):
         page.update()
 
     def data_change(e):
-        birth_date_field.value = e.control.value.strftime("%Y-%m-%d")
+        birth_date_field.value = e.control.value.strftime("%d-%m-%Y")
         page.update()
 
     def group_select(e):
@@ -211,7 +212,7 @@ def open(page: ft.Page, connection, switch=None):
         visible=False)
 
     load_list_btn = ft.ElevatedButton(text="Загрузить список")
-    birth_date_field = ft.TextField(label="Дата рождения", hint_text="ГГГГ-мм-дд")
+    birth_date_field = ft.TextField(label="Дата рождения", hint_text="дд-мм-ГГГГ")
     login_field = ft.TextField(label="Логин", max_length=45)
     password_field = ft.TextField(label="Пароль", password=True, can_reveal_password=True, max_length=45)
     phone_field = ft.TextField(label="Номер телефона", hint_text="+7 ХХХ ХХХ ХХ ХХ", max_length=20, visible=False)

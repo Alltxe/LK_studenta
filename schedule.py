@@ -44,7 +44,7 @@ def open(page: ft.Page, connection, group):
     firstdate, lastdate = getDateRangeFromWeek(str(today.year), current_week_number)
 
     # Форматируем диапазон дат для отображения
-    current_week = ft.Text(value=f"{firstdate.strftime('%Y-%m-%d')} - {lastdate.strftime('%Y-%m-%d')}", size=16, weight=ft.FontWeight.BOLD)
+    current_week = ft.Text(value=f"{firstdate.strftime('%d-%m-%Y')} - {lastdate.strftime('%d-%m-%Y')}", size=16, weight=ft.FontWeight.BOLD)
 
     # Кнопки переключения недель
     prev_week_btn = ft.IconButton(ft.icons.ARROW_LEFT, on_click=lambda _: switch_week(-1))
@@ -67,7 +67,7 @@ def open(page: ft.Page, connection, group):
         for i in range(7):
             day = start_date + datetime.timedelta(days=i)
             if day.weekday() != 6:  # Исключаем воскресенье (6)
-                days.append(f"{day.strftime('%Y-%m-%d')} {russian_weekdays[day.weekday()]}")
+                days.append(f"{day.strftime('%d-%m-%Y')} {russian_weekdays[day.weekday()]}")
         return days
 
     # Получаем список дней недели (без воскресенья)
@@ -90,7 +90,7 @@ def open(page: ft.Page, connection, group):
         schedule_content.controls.clear()  # Очищаем текущее расписание
 
         # Преобразуем выбранный день (строку) в дату
-        selected_day_date = datetime.datetime.strptime(day.split()[0], "%Y-%m-%d").date()
+        selected_day_date = datetime.datetime.strptime(day.split()[0], "%d-%m-%Y").date()
 
         # Получаем расписание студента для выбранного дня
         student_schedule = get_day_schedule(group, selected_day_date)
@@ -131,9 +131,9 @@ def open(page: ft.Page, connection, group):
         for day in days:
             days_list.controls.append(ft.Container(
                 content=ft.Text(day, size=14),
-                on_click=lambda e, d=day: select_day(d),  # Используем 'd' для правильного захвата дня
+                on_click=lambda e, d=day: select_day(d),
                 bgcolor=ft.colors.GREY_300 if day == selected_day else ft.colors.GREY_200,
-                padding=15,  # Увеличиваем padding для кнопок
+                padding=15,
                 border_radius=5
             ))
         page.update()

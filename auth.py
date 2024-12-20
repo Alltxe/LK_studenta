@@ -16,7 +16,7 @@ def open(page: ft.Page, connection, switch, callback):
             role = account[4]
             callback(role, username)
             if role == 'teacher':
-                switch(target="")
+                switch(target="add task")
             elif role == 'student':
                 switch(target="main menu")
             elif role == 'admin':

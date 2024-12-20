@@ -13,11 +13,28 @@ def main(page: ft.Page):
     page.vertical_alignment = ft.MainAxisAlignment.START
     page.padding = 20
     page.window.min_width = 1200
-    page.window.min_height = 700
+    page.window.min_height = 720
     group = ''
     id = 0
     fio = ''
 
+
+    def close_dialog(e):
+        notifications_dialog.open = False
+        page.update()
+
+    notifications_dialog = ft.AlertDialog(
+        title=ft.Text("Уведомления"),
+        content=ft.Container(
+            width=300,
+            height=200,
+            padding=10,
+            bgcolor=ft.colors.WHITE,
+        ),
+        actions=[
+            ft.TextButton("Закрыть", on_click=close_dialog)
+        ],
+    )
 
     connection = create_connection()
 
@@ -35,7 +52,7 @@ def main(page: ft.Page):
         elif target == "add mode page":
             add_user.open(page, connection, page_switch)
         elif target == "main menu":
-            main_student_menu.open(page, connection, group, fio)
+            main_student_menu.open(page, connection, group, fio, id)
         elif target == "schedule edit":
             schedule_edit.open(page, connection)
         elif target == "schedule view":
@@ -44,6 +61,91 @@ def main(page: ft.Page):
             add_task.open(page, connection, id)
         elif target == "task info":
             task_info.open(page, connection, id)
+
+    def open_notifications(e):
+        try:
+            cursor = connection.cursor()
+            query = """
+            SELECT n.idnotification, n.name, n.time, sn.checked
+            FROM st_notification sn
+            JOIN notification n ON sn.notification = n.idnotification
+            WHERE sn.student = %s
+            ORDER BY n.time DESC
+            """
+            cursor.execute(query, (id,))
+            notifications = cursor.fetchall()
+
+            # Обновляем статус непрочитанных уведомлений
+            unread_notifications = [notif[0] for notif in notifications if not notif[3]]  # ID непрочитанных уведомлений
+            if unread_notifications:
+                update_query = """
+                UPDATE st_notification
+                SET checked = 1
+                WHERE student = %s AND notification IN (%s)
+                """ % (id, ', '.join(map(str, unread_notifications)))
+                cursor.execute(update_query)
+                connection.commit()
+
+            # Создаем ListView для отображения уведомлений
+            notification_list = ft.ListView(
+                expand=True,
+                spacing=10,
+                controls=[
+                    ft.Container(
+                        content=ft.Column(
+                            controls=[
+                                ft.Text(f"{name} ({time.strftime('%d-%m-%Y %H:%M')})", weight=ft.FontWeight.BOLD),
+                                ft.Text(
+                                    "Статус: Прочитано" if checked else "Статус: Не прочитано",
+                                    color="green" if checked else "red"
+                                )
+                            ],
+                            spacing=5,
+                        ),
+                        padding=10,
+                        border_radius=8,
+                        border=ft.border.all(1, "black"),
+                        bgcolor=ft.colors.GREY_200
+                    )
+                    for idnotification, name, time, checked in notifications
+                ]
+            )
+
+            # Обновляем содержимое диалога уведомлений
+            notifications_dialog.content = ft.Container(
+                content=notification_list,
+                width=400,
+                height=300,
+                padding=10,
+                bgcolor=ft.colors.WHITE
+            )
+
+            # Открываем диалог
+            page.overlay.append(notifications_dialog)
+            notifications_dialog.open = True
+            page.update()
+
+            cursor.close()
+
+        except Exception as err:
+            print(f"Ошибка загрузки уведомлений: {err}")
+
+            # Обновляем содержимое диалога уведомлений
+            notifications_dialog.content = ft.Container(
+                content=notification_list,
+                width=400,
+                height=300,
+                padding=10,
+                bgcolor=ft.colors.WHITE
+            )
+
+            # Открываем диалог
+            page.overlay.append(notifications_dialog)
+            notifications_dialog.open = True
+            page.update()
+
+        except Exception as err:
+            print(f"Ошибка загрузки уведомлений: {err}")
 
 
 
@@ -57,17 +159,18 @@ def main(page: ft.Page):
                                             alignment=ft.MainAxisAlignment.CENTER)
         elif role == 'student':
             cursor = connection.cursor()
-            cursor.execute("""SELECT s.`group`, s.full_name from 
+            cursor.execute("""SELECT s.`group`, s.full_name, s.idstudent from 
                                 accounts a
                                 JOIN student s ON s.idstudent = a.idstudent
                                 WHERE login = %s""",
                            (login,))
-            group, fio = cursor.fetchone()
+            group, fio, id = cursor.fetchone()
             cursor.close()
             navigation_bar.content = ft.Row([ft.IconButton(icon=ft.icons.CALENDAR_MONTH, tooltip="Расписание",
                                                            on_click=lambda e: page_switch(target="schedule view")),
                                              ft.IconButton(icon=ft.icons.HOME, tooltip="Главное меню",
-                                                           on_click=lambda  e: page_switch(target="main menu"))],
+                                                           on_click=lambda  e: page_switch(target="main menu")),
+                                             ft.IconButton(icon=ft.icons.NOTIFICATIONS, on_click=open_notifications)],
                                             alignment=ft.MainAxisAlignment.CENTER)
         elif role == 'teacher':
             navigation_bar.content = ft.Row([ft.IconButton(icon=ft.icons.EDIT_DOCUMENT, tooltip="Добавление задания",

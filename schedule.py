@@ -170,7 +170,8 @@ def open(page: ft.Page, connection, group):
         border=ft.border.all(1, ft.colors.GREY_400),
         padding=10,
         border_radius=5,
-        expand=True
+        expand=True,
+        height=450
     )
 
     # Контейнер с днями недели и переключением недели
@@ -180,6 +181,7 @@ def open(page: ft.Page, connection, group):
             expand=True
         ),
         width=300,
+        height=450,
         border=ft.border.all(1, ft.colors.GREY_400),
         padding=10,
         border_radius=5,

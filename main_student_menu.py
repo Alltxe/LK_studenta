@@ -33,7 +33,7 @@ def open(page: ft.Page, connection, group, fio, id):
         try:
             cursor = connection.cursor()
             query = """
-            SELECT t.task_name, t.due_time, t.description, s.status
+            SELECT t.task_name, t.due_time, t.description, s.status, t.subject
             FROM tasks t
             LEFT JOIN student_tasks s ON s.task = t.idtasks AND s.student = %s
             WHERE t.`group` = %s AND t.due_time >= CURDATE()
@@ -50,7 +50,13 @@ def open(page: ft.Page, connection, group, fio, id):
     def show_info(e):
         dialog = ft.AlertDialog(
             title=ft.Text("Детали задания"),
-            content=ft.Text(f"Детальная информация: {e.control.data}"),
+            content=ft.Column([ft.Text(f"Дисциплина: {e.control.data[0]}"),
+                               ft.Text(f"Название: {e.control.data[1]}"),
+                               ft.Text(f"Срок сдачи: {e.control.data[2]}"),
+                               ft.Text(f"Статус: {e.control.data[4]}"),
+                               ft.Text(f"Описание: {e.control.data[3]}"),
+                               ], width=300, height=200,
+                              ),
         )
         page.overlay.append(dialog)
         dialog.open = True
@@ -108,17 +114,17 @@ def open(page: ft.Page, connection, group, fio, id):
 
     # Загрузка ближайших заданий
     upcoming_tasks = get_upcoming_tasks()
-    for task_name, deadline, descripton, status in upcoming_tasks:
+    for task_name, deadline, descripton, status, subject in upcoming_tasks:
         status_text = "Выполнено" if status else "Не выполнено"
         deadline_text = deadline.strftime('%d-%m-%Y')
         task_row = ft.Row(
             controls=[
-                ft.Text(f"{task_name} (до {deadline_text})", expand=True),
+                ft.Text(f"{subject} - {task_name} (до {deadline_text})", expand=True),
                 ft.Text(status_text, color="green" if status else "red"),
                 ft.IconButton(
                     icon=ft.icons.INFO,
                     on_click=show_info,
-                    data=descripton
+                    data=(subject, task_name, deadline, descripton, status)
                 )
             ],
             alignment=ft.MainAxisAlignment.SPACE_BETWEEN

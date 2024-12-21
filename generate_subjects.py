@@ -2,7 +2,6 @@ from faker import Faker
 from mysql.connector import connect, Error
 from db_connection import create_connection
 
-# Инициализация Faker для генерации случайных данных
 fake = Faker("ru-RU")
 
 def generate_subjects(num):

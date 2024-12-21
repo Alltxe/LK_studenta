@@ -30,7 +30,7 @@ def open(page: ft.Page, connection, switch, callback):
         return None
 
     username_field = ft.TextField(label="Логин", width=300)
-    password_field = ft.TextField(label="Пароль", password=True, width=300)
+    password_field = ft.TextField(label="Пароль", password=True, width=300, can_reveal_password=True)
     login_button = ft.ElevatedButton(text="Войти", on_click=login)
 
     container = ft.Container(

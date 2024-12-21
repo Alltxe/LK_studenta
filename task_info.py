@@ -81,7 +81,7 @@ def open(page: ft.Page, connection, id):
                                 cursor.execute(
                                     """
                                     UPDATE student_tasks 
-                                    SET status = %s, submisson_date = CURDATE() 
+                                    SET status = %s
                                     WHERE idstudent_tasks = %s
                                     """,
                                     (new_status, result[0]),
@@ -89,8 +89,8 @@ def open(page: ft.Page, connection, id):
                             else:
                                 cursor.execute(
                                     """
-                                    INSERT INTO student_tasks (student, task, status, submisson_date) 
-                                    VALUES (%s, %s, %s, CURDATE())
+                                    INSERT INTO student_tasks (student, task, status) 
+                                    VALUES (%s, %s, %s)
                                     """,
                                     (s_id, t_id, new_status),
                                 )

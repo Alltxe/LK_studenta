@@ -1,5 +1,5 @@
 import flet as ft
-
+from datetime import date
 from db_connection import Error
 from werkzeug.security import generate_password_hash
 
@@ -88,7 +88,7 @@ def open(page: ft.Page, connection, switch=None):
         login_field.value = ""
         password_field.value = ""
         full_name_field.value = ""
-        birth_date_field.value = ""
+        date_f.value = ""
         phone_field.value = ""
         discipline_dropdown.value = None
         disciplines.clear()
@@ -130,7 +130,9 @@ def open(page: ft.Page, connection, switch=None):
             disciplines_section.visible = True
             group_field.visible = False
             phone_field.visible = True
+            load_teachers()
         else:
+            full_name_autocomplete.suggestions = []
             disciplines_section.visible = False
             group_field.visible = True
             phone_field.visible = False
@@ -139,7 +141,7 @@ def open(page: ft.Page, connection, switch=None):
         page.update()
 
     def date_change(e):
-        birth_date_field.value = e.control.value.strftime("%Y-%m-%d")
+        date_f.value = e.control.value.strftime("%Y-%m-%d")
         page.update()
 
     def group_select(e):
@@ -188,7 +190,7 @@ def open(page: ft.Page, connection, switch=None):
             # Функция для обновления данных на странице
         def update_data(index):
             nonlocal disciplines, user_id
-            login_field.value, birth_date_field.value, user_id = records[index][0:3:]
+            login_field.value, date_f.value, user_id = records[index][0:3:]
             if role_field.value == "Преподаватель":
                 phone_field.value = records[index][-1]
                 query = ("""
@@ -248,7 +250,7 @@ def open(page: ft.Page, connection, switch=None):
         role = role_field.value
         login = login_field.value
         password = password_field.value
-        birth_date = birth_date_field.value
+        birth_date = date_f.value
         phone_number = phone_field.value
         if role == "Студент":
 
@@ -320,7 +322,7 @@ def open(page: ft.Page, connection, switch=None):
 
     discipline_dropdown = ft.Dropdown(
         label="Выберите дисциплину",
-        expand=False
+        expand=False, icon_size=0,
     )
     add_btn = ft.ElevatedButton(text="Добавить", on_click=add_discipline)
 
@@ -332,6 +334,7 @@ def open(page: ft.Page, connection, switch=None):
         ],
         label="Роль",
         on_change=on_role_change,
+        width=431
     )
     group_autocomplete = ft.AutoComplete(on_select=group_select)
     group_field = ft.Row(
@@ -341,7 +344,15 @@ def open(page: ft.Page, connection, switch=None):
                                padding=ft.padding.only(5,0,0,5), height=50, expand=True)],
         visible=False)
 
-    birth_date_field = ft.TextField(label="Дата рождения", hint_text="ГГГГ-мм-дд")
+    date_f = date_f = ft.TextField(hint_text='Дата', read_only=True, width=200, value=date.today().strftime("%d-%m-%Y"),
+                                   border=ft.InputBorder.NONE, content_padding=10, expand=True)
+    date_field = ft.Container(ft.Row([
+        date_f,
+        ft.IconButton(
+            icon=ft.icons.CALENDAR_MONTH,
+            on_click=lambda e: page.open(ft.DatePicker(on_change=date_change))
+        ),
+    ], width=300), border=ft.border.all(1, ft.colors.BLACK), border_radius=5)
     login_field = ft.TextField(label="Логин", max_length=45)
     password_field = ft.TextField(label="Пароль", password=True, can_reveal_password=True, max_length=45)
     phone_field = ft.TextField(label="Номер телефона", max_length=20, visible=False)
@@ -401,7 +412,7 @@ def open(page: ft.Page, connection, switch=None):
                 alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
             ),
             group_field,
-            ft.Row(controls=[birth_date_field,date_pick_btn]),
+            ft.Row([ft.Text("Дата рождения", theme_style=ft.TextThemeStyle.BODY_LARGE), date_field]),
             login_field,
             password_field,
             full_name_field,

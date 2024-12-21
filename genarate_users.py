@@ -83,4 +83,4 @@ def generate_test_data(num_students=50, num_teachers=10):
 
 
 # Запуск генерации
-generate_test_data(60, 10)
+generate_test_data(120, 10)

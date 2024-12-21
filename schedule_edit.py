@@ -67,10 +67,6 @@ def open(page: ft.Page, connection):
         except Error as e:
             print(f"Ошибка при загрузке расписания: {e}")
 
-            # Обновление страницы
-            page.update()
-            cursor.close()
-            print("Расписание успешно загружено!")
 
         except Error as e:
             print(f"Ошибка при загрузке расписания: {e}")
@@ -116,8 +112,14 @@ def open(page: ft.Page, connection):
                     )
             connection.commit()
             cursor.close()
+            snackbar.content = ft.Text("Расписание обновлено")
+            snackbar.open = True
+            page.update()
         except Error as e:
             print(f"Ошибка при сохранении расписания: {e}")
+            snackbar.content = ft.Text("Ошибка при сохранении расписании, возможно вы не выбрали группу")
+            snackbar.open = True
+            page.update()
 
     def load_groups():
         try:
@@ -256,10 +258,10 @@ def open(page: ft.Page, connection):
         table_row = ft.Row(
             controls=[
                 ft.TextField(border_radius=0, value=time, text_size=14, expand=True, border_color=ft.colors.GREY_400),
-                ft.Dropdown(options=disciplines,border_radius=0, width=350, border_color=ft.colors.GREY_400, icon=None, value=discipline),
+                ft.Dropdown(options=disciplines,border_radius=0, width=350, border_color=ft.colors.GREY_400, icon_size=0, value=discipline),
                 ft.TextField(border_radius=0, text_size=14, expand=True, border_color=ft.colors.GREY_400, value=room),
                 ft.Dropdown(border_radius=0, width=250, border_color=ft.colors.GREY_400, value=type,
-                            options=[ft.dropdown.Option(option) for option in ['Лекция', 'Лабораторная работа', 'Практическая работа']]),
+                            options=[ft.dropdown.Option(option) for option in ['Лекция', 'Лабораторная работа', 'Практическая работа', 'Семинар', 'Консультация']]),
                 ft.Dropdown(options=teachers,border_radius=0, width=350, border_color=ft.colors.GREY_400, icon=None, value=teacher),
             ],
             spacing=10,
@@ -294,7 +296,7 @@ def open(page: ft.Page, connection):
         spacing=0
     )
 
-    save_btn = ft.ElevatedButton(text="Добавить/изменить", on_click=save_schedule)
+    save_btn = ft.ElevatedButton(text="Сохранить", on_click=save_schedule)
 
     # Общая структура страницы
     layout = ft.Column([
@@ -304,8 +306,9 @@ def open(page: ft.Page, connection):
         table,
         save_btn,
     ], spacing=10)
+    snackbar = ft.SnackBar(ft.Text(""))
 
     load_groups()
 
-    page.add(layout)
+    page.add(layout, snackbar)
     page.update()

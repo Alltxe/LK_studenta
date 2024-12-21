@@ -2,18 +2,10 @@ import flet as ft
 from db_connection import create_connection, Error
 from werkzeug.security import generate_password_hash
 from datetime import datetime
+from datetime import date
 
 
 def open(page: ft.Page, connection, switch=None):
-    page.theme_mode = ft.ThemeMode.LIGHT
-    page.horizontal_alignment = ft.CrossAxisAlignment.CENTER
-    page.vertical_alignment = ft.MainAxisAlignment.START
-    page.padding = 20
-    page.scroll = "adaptive"
-    page.window.min_width = 450
-    page.window.min_height = 600
-
-
     disciplines = []
     group_value = ""
 
@@ -65,7 +57,7 @@ def open(page: ft.Page, connection, switch=None):
             (login_field.value, "Логин не введен"),
             (password_field.value, "Пароль не введен"),
             (full_name_field.value, "ФИО не введено"),
-            (birth_date_field.value, "Дата рождения не выбрана")
+            (date_f.value, "Дата рождения не выбрана")
         ]
 
         for value, message in fields:
@@ -76,7 +68,7 @@ def open(page: ft.Page, connection, switch=None):
         cursor = connection.cursor()
         login = login_field.value
         password = generate_password_hash(password_field.value)
-        birth_date = datetime.strptime(birth_date_field.value, "%d-%m-%Y").strftime("%Y-%m-%d")
+        birth_date = datetime.strptime(date_f.value, "%d-%m-%Y").strftime("%Y-%m-%d")
         role = role_field.value
         full_name = full_name_field.value
         phone_number = phone_field.value
@@ -128,7 +120,7 @@ def open(page: ft.Page, connection, switch=None):
         login_field.value = ""
         password_field.value = ""
         full_name_field.value = ""
-        birth_date_field.value = ""
+        date_f.value = date.today().strftime("%d-%m-%Y")
         phone_field.value = ""
         discipline_dropdown.value = None
         disciplines.clear()
@@ -179,8 +171,8 @@ def open(page: ft.Page, connection, switch=None):
             update_disciplines_display()
         page.update()
 
-    def data_change(e):
-        birth_date_field.value = e.control.value.strftime("%d-%m-%Y")
+    def date_change(e):
+        date_f.value = e.control.value.strftime("%d-%m-%Y")
         page.update()
 
     def group_select(e):
@@ -190,7 +182,7 @@ def open(page: ft.Page, connection, switch=None):
     # Поля и кнопки для добавления/удаления дисциплин
     discipline_dropdown = ft.Dropdown(
         label="Выберите дисциплину",
-        expand=False
+        icon_size=0,
     )
     add_btn = ft.ElevatedButton(text="Добавить", on_click=add_discipline)
 
@@ -201,7 +193,8 @@ def open(page: ft.Page, connection, switch=None):
             ft.dropdown.Option("Преподаватель"),
         ],
         label="Роль",
-        on_change=on_role_change,  # Обработка изменения роли
+        on_change=on_role_change,
+        width=431,
     )
     group_autocomplete = ft.AutoComplete(on_select=group_select)
     group_field = ft.Row(
@@ -211,21 +204,25 @@ def open(page: ft.Page, connection, switch=None):
                                padding=ft.padding.only(5,0,0,5), height=50, expand=True)],
         visible=False)
 
+    date_f = date_f = ft.TextField(hint_text='Дата',read_only=True, width=200, value=date.today().strftime("%d-%m-%Y"),
+                        border=ft.InputBorder.NONE, content_padding=10, expand=True)
+
+    date_field = ft.Container(ft.Row([
+        date_f,
+        ft.IconButton(
+            icon=ft.icons.CALENDAR_MONTH,
+            on_click=lambda e: page.open(ft.DatePicker(on_change=date_change))
+        ),
+    ], width=300 ), border=ft.border.all(1, ft.colors.BLACK), border_radius=5)
+
     load_list_btn = ft.ElevatedButton(text="Загрузить список")
-    birth_date_field = ft.TextField(label="Дата рождения", hint_text="дд-мм-ГГГГ")
     login_field = ft.TextField(label="Логин", max_length=45)
     password_field = ft.TextField(label="Пароль", password=True, can_reveal_password=True, max_length=45)
-    phone_field = ft.TextField(label="Номер телефона", hint_text="+7 ХХХ ХХХ ХХ ХХ", max_length=20, visible=False)
+    phone_field = ft.TextField(label="Номер телефона", max_length=20, visible=False)
     save_btn = ft.ElevatedButton(text="Добавить/изменить", on_click=add_user)
     mode_switch_btn = ft.ElevatedButton(text="Редактирование", on_click=lambda e: switch(target="edit mode page"))
 
     full_name_field = ft.TextField(label="ФИО", expand=True)
-
-
-    date_pick_btn = ft.ElevatedButton(icon=ft.icons.CALENDAR_MONTH, on_click=lambda e:
-                                      page.open(ft.DatePicker(
-                                        on_change=data_change
-                                      )),text="выбрать дату")
 
     snackbar = ft.SnackBar(ft.Text(""))
 
@@ -249,7 +246,7 @@ def open(page: ft.Page, connection, switch=None):
                 alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
             ),
             group_field,
-            ft.Row(controls=[birth_date_field,date_pick_btn]),
+            ft.Row([ft.Text("Дата рождения", theme_style=ft.TextThemeStyle.BODY_LARGE), date_field]),
             login_field,
             password_field,
             full_name_field,

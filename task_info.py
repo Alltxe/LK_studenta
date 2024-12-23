@@ -72,7 +72,7 @@ def open(page: ft.Page, connection, id):
                         try:
                             cursor = connection.cursor()
                             cursor.execute(
-                                "SELECT idstudent_tasks FROM student_tasks WHERE student = %s AND task = %s",
+                                "SELECT * FROM student_tasks WHERE student = %s AND task = %s",
                                 (s_id, t_id),
                             )
                             result = cursor.fetchone()
@@ -82,9 +82,9 @@ def open(page: ft.Page, connection, id):
                                     """
                                     UPDATE student_tasks 
                                     SET status = %s
-                                    WHERE idstudent_tasks = %s
+                                    WHERE student = %s AND task = %s
                                     """,
-                                    (new_status, result[0]),
+                                    (new_status, s_id, t_id),
                                 )
                             else:
                                 cursor.execute(
@@ -142,7 +142,7 @@ def open(page: ft.Page, connection, id):
                 JOIN teacher_subjects ts ON t.idteacher = ts.teacher 
                 WHERE t.idteacher = %s
                 """,
-                (id,),
+                (id, ),
             )
             rows = cursor.fetchall()
             disciplines = [ft.dropdown.Option(row[0]) for row in rows]

@@ -52,68 +52,80 @@ def open(page: ft.Page, connection, switch=None):
         page.update()
 
     def add_user(e):
-        fields = [
-            (role_field.value, "Роль не выбрана"),
-            (login_field.value, "Логин не введен"),
-            (password_field.value, "Пароль не введен"),
-            (full_name_field.value, "ФИО не введено"),
-            (date_f.value, "Дата рождения не выбрана")
-        ]
-
-        for value, message in fields:
-            if not value:
-                bottom_attention(message)
+        try:
+            fields = [
+                (role_field.value, "Роль не выбрана"),
+                (login_field.value, "Логин не введен"),
+                (password_field.value, "Пароль не введен"),
+                (full_name_field.value, "ФИО не введено"),
+                (date_f.value, "Дата рождения не выбрана")
+            ]
+            cursor = connection.cursor()
+            if not all([role_field.value, login_field.value, password_field.value]):
+                bottom_attention("Не все поля заполнены")
                 return
+            login = login_field.value
+            password = generate_password_hash(password_field.value)
 
-        cursor = connection.cursor()
-        login = login_field.value
-        password = generate_password_hash(password_field.value)
-        birth_date = datetime.strptime(date_f.value, "%d-%m-%Y").strftime("%Y-%m-%d")
-        role = role_field.value
-        full_name = full_name_field.value
-        phone_number = phone_field.value
+            if role_field.value != "Администратор":
+                for value, message in fields:
+                    if not value:
+                        bottom_attention(message)
+                        return
 
-        cursor.execute(f"SELECT COUNT(*) FROM accounts WHERE login = %s", (login,))
-        if cursor.fetchone()[0] > 0:
-            bottom_attention("Логин уже существует")
+
+                birth_date = datetime.strptime(date_f.value, "%d-%m-%Y").strftime("%Y-%m-%d")
+                role = role_field.value
+                full_name = full_name_field.value
+                phone_number = phone_field.value
+
+                cursor.execute(f"SELECT COUNT(*) FROM accounts WHERE login = %s", (login,))
+                if cursor.fetchone()[0] > 0:
+                    bottom_attention("Логин уже существует")
+                    cursor.close()
+                    return
+
+                if role == "Преподаватель":
+                    query = "INSERT INTO teacher(full_name, birth_date, phone_number) VALUES (%s, %s, %s)"
+                    cursor.execute(query, (full_name, birth_date, phone_number))
+                    cursor.execute("SELECT LAST_INSERT_ID()")
+                    teacher_id = cursor.fetchone()[0]
+
+                    query = "INSERT INTO teacher_subjects(teacher, subject) VALUES (%s, %s)"
+                    for i in disciplines:
+                        cursor.execute(query,(teacher_id, i))
+                    query = "INSERT INTO accounts(login, password, role, idteacher) VALUES (%s, %s, %s, %s)"
+                    cursor.execute(query, (login, password, "teacher", teacher_id))
+
+                if role == "Студент":
+                    # Проверяем существование group_value
+                    cursor.execute("SELECT COUNT(*) FROM st_groups WHERE idgroups = %s", (group_value,))
+                    if cursor.fetchone()[0] == 0:
+                        bottom_attention("Группа с таким значением не существует")
+                        return
+
+                    # Добавляем запись в таблицу student
+                    query = "INSERT INTO student (full_name, `group`, birth_date) VALUES (%s, %s, %s)"
+                    cursor.execute(query, (full_name, group_value, birth_date))
+
+                    # Получаем id добавленной записи
+                    cursor.execute("SELECT LAST_INSERT_ID()")
+                    student_id = cursor.fetchone()[0]
+
+                    # Добавляем запись в accounts
+                    query = "INSERT INTO accounts (login, password, role, idstudent) VALUES (%s, %s, %s, %s)"
+                    cursor.execute(query, (login, password, "student", student_id))
+            else:
+                cursor.execute("INSERT INTO accounts (login, password, role) VALUES (%s, %s, %s)", (login, password, "admin"))
+
+            connection.commit()
             cursor.close()
-            return
+            bottom_attention("Профиль пользователя успешно добавлен")
+            clear_page()
 
-        if role == "Преподаватель":
-            query = "INSERT INTO teacher(full_name, birth_date, phone_number) VALUES (%s, %s, %s)"
-            cursor.execute(query, (full_name, birth_date, phone_number))
-            cursor.execute("SELECT LAST_INSERT_ID()")
-            teacher_id = cursor.fetchone()[0]
-
-            query = "INSERT INTO teacher_subjects(teacher, subject) VALUES (%s, %s)"
-            for i in disciplines:
-                cursor.execute(query,(teacher_id, i))
-            query = "INSERT INTO accounts(login, password, role, idteacher) VALUES (%s, %s, %s, %s)"
-            cursor.execute(query, (login, password, "teacher", teacher_id))
-
-        if role == "Студент":
-            # Проверяем существование group_value
-            cursor.execute("SELECT COUNT(*) FROM st_groups WHERE idgroups = %s", (group_value,))
-            if cursor.fetchone()[0] == 0:
-                bottom_attention("Группа с таким значением не существует")
-                return
-
-            # Добавляем запись в таблицу student
-            query = "INSERT INTO student (full_name, `group`, birth_date) VALUES (%s, %s, %s)"
-            cursor.execute(query, (full_name, group_value, birth_date))
-
-            # Получаем id добавленной записи
-            cursor.execute("SELECT LAST_INSERT_ID()")
-            student_id = cursor.fetchone()[0]
-
-            # Добавляем запись в accounts
-            query = "INSERT INTO accounts (login, password, role, idstudent) VALUES (%s, %s, %s, %s)"
-            cursor.execute(query, (login, password, "student", student_id))
-
-        connection.commit()
-        cursor.close()
-        bottom_attention("Учетная запись успешно добавлена")
-        clear_page()
+        except Error as e:
+            bottom_attention("Профиль не добавлен, проверьте поля")
+            print(e)
 
     def clear_page():
         role_field.value = None
@@ -161,14 +173,27 @@ def open(page: ft.Page, connection, switch=None):
     def on_role_change(e):
         if role_field.value == "Преподаватель":
             disciplines_section.visible = True
+            full_name_field.visible = True
+            date_field.visible = True
             group_field.visible = False
             phone_field.visible = True
-        else:
+
+        elif role_field.value == "Студент":
+            full_name_field.visible = True
+            date_field.visible = True
             disciplines_section.visible = False
             group_field.visible = True
             phone_field.visible = False
             disciplines.clear()
             update_disciplines_display()
+
+        else:
+            disciplines_section.visible = False
+            group_field.visible = False
+            phone_field.visible = False
+            full_name_field.visible = False
+            date_field.visible = False
+
         page.update()
 
     def date_change(e):
@@ -191,6 +216,7 @@ def open(page: ft.Page, connection, switch=None):
         options=[
             ft.dropdown.Option("Студент"),
             ft.dropdown.Option("Преподаватель"),
+            ft.dropdown.Option("Администратор"),
         ],
         label="Роль",
         on_change=on_role_change,
@@ -207,22 +233,23 @@ def open(page: ft.Page, connection, switch=None):
     date_f = date_f = ft.TextField(hint_text='Дата',read_only=True, width=200, value=date.today().strftime("%d-%m-%Y"),
                         border=ft.InputBorder.NONE, content_padding=10, expand=True)
 
-    date_field = ft.Container(ft.Row([
+    date_field = ft.Row([ft.Text("Дата рождения", theme_style=ft.TextThemeStyle.BODY_LARGE),
+                         ft.Container(ft.Row([
         date_f,
         ft.IconButton(
             icon=ft.icons.CALENDAR_MONTH,
             on_click=lambda e: page.open(ft.DatePicker(on_change=date_change))
         ),
-    ], width=300 ), border=ft.border.all(1, ft.colors.BLACK), border_radius=5)
+    ], width=300 ), border=ft.border.all(1, ft.colors.BLACK), border_radius=5)])
 
     load_list_btn = ft.ElevatedButton(text="Загрузить список")
     login_field = ft.TextField(label="Логин", max_length=45)
     password_field = ft.TextField(label="Пароль", password=True, can_reveal_password=True, max_length=45)
     phone_field = ft.TextField(label="Номер телефона", max_length=20, visible=False)
-    save_btn = ft.ElevatedButton(text="Добавить/изменить", on_click=add_user)
+    save_btn = ft.ElevatedButton(text="Добавить", on_click=add_user)
     mode_switch_btn = ft.ElevatedButton(text="Редактирование", on_click=lambda e: switch(target="edit mode page"))
 
-    full_name_field = ft.TextField(label="ФИО", expand=True)
+    full_name_field = ft.TextField(label="ФИО", expand=True, max_length=100)
 
     snackbar = ft.SnackBar(ft.Text(""))
 
@@ -246,7 +273,7 @@ def open(page: ft.Page, connection, switch=None):
                 alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
             ),
             group_field,
-            ft.Row([ft.Text("Дата рождения", theme_style=ft.TextThemeStyle.BODY_LARGE), date_field]),
+            date_field,
             login_field,
             password_field,
             full_name_field,

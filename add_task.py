@@ -98,7 +98,7 @@ def open(page: ft.Page, connection, id):
                 )
 
             # Уведомление об успехе
-            snackbar.content = ft.Text("Задача и уведомления добавлены")
+            snackbar.content = ft.Text("Задача добавлена")
             snackbar.open = True
             page.update()
 
@@ -153,7 +153,7 @@ def open(page: ft.Page, connection, id):
     )
 
     discipline_field = ft.Dropdown(label="Дисциплина", options=disciplines, expand=True)
-    title_field = ft.TextField(label="Наименование", expand=True)
+    title_field = ft.TextField(label="Наименование", expand=True, max_length=45)
     description_field = ft.TextField(label="Описание", multiline=True, min_lines=5, expand=True)
 
     # Кнопка создания

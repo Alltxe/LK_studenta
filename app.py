@@ -14,6 +14,7 @@ def main(page: ft.Page):
     page.padding = 20
     page.window.min_width = 1200
     page.window.min_height = 720
+    username = ''
     group = ''
     id = 0
     fio = ''
@@ -48,7 +49,7 @@ def main(page: ft.Page):
         page.clean()
         page.add(navigation_bar)
         if target == "edit mode page":
-            edit_user.open(page, connection, page_switch)
+            edit_user.open(page, connection, page_switch, username)
         elif target == "add mode page":
             add_user.open(page, connection, page_switch)
         elif target == "main menu":
@@ -150,13 +151,14 @@ def main(page: ft.Page):
 
 
     def callback(role, login=None):
-        nonlocal group, fio, id
+        nonlocal group, fio, id, username
         if role == 'admin':
             navigation_bar.content = ft.Row([ft.IconButton(icon=ft.icons.PEOPLE, tooltip="Добавить пользователя",
                                                            on_click=lambda e: page_switch(target="add mode page")),
                                              ft.IconButton(icon=ft.icons.DATE_RANGE, tooltip="Редактировать расписание",
                                                            on_click=lambda e: page_switch(target="schedule edit"))],
                                             alignment=ft.MainAxisAlignment.CENTER)
+            username = login
         elif role == 'student':
             cursor = connection.cursor()
             cursor.execute("""SELECT s.`group`, s.full_name, s.idstudent from 

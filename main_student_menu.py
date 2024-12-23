@@ -53,7 +53,7 @@ def open(page: ft.Page, connection, group, fio, id):
             content=ft.Column([ft.Text(f"Дисциплина: {e.control.data[0]}"),
                                ft.Text(f"Название: {e.control.data[1]}"),
                                ft.Text(f"Срок сдачи: {e.control.data[2]}"),
-                               ft.Text(f"Статус: {e.control.data[4]}"),
+                               ft.Text(f"Статус: {'Выполнено' if e.control.data[4] == 1 else 'Не выполнено'}"),
                                ft.Text(f"Описание: {e.control.data[3]}"),
                                ], width=300, height=200,
                               ),

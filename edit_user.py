@@ -4,7 +4,7 @@ from db_connection import Error
 from werkzeug.security import generate_password_hash
 
 
-def open(page: ft.Page, connection, switch=None):
+def open(page: ft.Page, connection, switch=None, username=None):
     disciplines = []
     group_value = ""
     records = []
@@ -126,18 +126,28 @@ def open(page: ft.Page, connection, switch=None):
 
     def on_role_change(e):
         if role_field.value == "Преподаватель":
-            load_teachers()
             disciplines_section.visible = True
+            full_name_field.visible = True
+            date_field.visible = True
             group_field.visible = False
             phone_field.visible = True
-            load_teachers()
-        else:
-            full_name_autocomplete.suggestions = []
+
+        elif role_field.value == "Студент":
+            full_name_field.visible = True
+            date_field.visible = True
             disciplines_section.visible = False
             group_field.visible = True
             phone_field.visible = False
             disciplines.clear()
             update_disciplines_display()
+
+        else:
+            disciplines_section.visible = False
+            group_field.visible = False
+            phone_field.visible = False
+            full_name_field.visible = False
+            date_field.visible = False
+
         page.update()
 
     def date_change(e):
@@ -169,7 +179,7 @@ def open(page: ft.Page, connection, switch=None):
                 bottom_attention("Данные не найдены")
                 return
 
-        if role_field.value == "Преподаватель":
+        elif role_field.value == "Преподаватель":
 
             query = ("""
                 SELECT accounts.login, teacher.birth_date, teacher.idteacher, teacher.phone_number
@@ -183,7 +193,6 @@ def open(page: ft.Page, connection, switch=None):
             if not records:
                 bottom_attention("Данные не найдены")
                 return
-
 
         current_index = 0
 
@@ -238,80 +247,97 @@ def open(page: ft.Page, connection, switch=None):
     def update_user(e):
         nonlocal user_id
 
-        if not user_id:
-            bottom_attention("Пользователь не найден")
-            return
+        if role_field.value != "Администратор":
+            if not user_id:
+                bottom_attention("Пользователь не найден")
+                return
 
-        if not role_field.value:
-            bottom_attention("Роль не выбрана")
-            return
+            if not role_field.value:
+                bottom_attention("Роль не выбрана")
+                return
 
-        cursor = connection.cursor()
-        role = role_field.value
-        login = login_field.value
-        password = password_field.value
-        birth_date = date_f.value
-        phone_number = phone_field.value
-        if role == "Студент":
-
-            query = """
-                UPDATE student
-                SET full_name = %s, `group` = %s, birth_date = %s
-                WHERE idstudent = %s
-            """
-            cursor.execute(query, (full_name, group_value, birth_date, user_id))
-
-            query = """
-                UPDATE accounts
-                SET login = %s
-                WHERE idstudent = %s
-            """
-            cursor.execute(query, (login, user_id))
-
-        elif role == "Преподаватель":
-
-            query = """
-                UPDATE teacher
-                SET full_name = %s, birth_date = %s, phone_number = %s
-                WHERE idteacher = %s
-            """
-            cursor.execute(query, (full_name, birth_date, phone_number, user_id))
-
-            query = """
-                UPDATE accounts
-                SET login = %s
-                WHERE idteacher = %s
-            """
-            cursor.execute(query, (login, user_id))
-
-            # Обновляем дисциплины преподавателя
-            cursor.execute("DELETE FROM teacher_subjects WHERE teacher = %s", (user_id,))
-            query = "INSERT INTO teacher_subjects (teacher, subject) VALUES (%s, %s)"
-            for discipline in disciplines:
-                cursor.execute(query, (user_id, discipline))
-
-        if password:
-            hashed_password = generate_password_hash(password)
-            query = """
-                UPDATE accounts
-                SET login = %s, password = %s
-                WHERE idstudent = %s OR idteacher = %s
-            """
-            cursor.execute(query, (login, hashed_password, user_id, user_id))
+        try:
+            cursor = connection.cursor()
+            role = role_field.value
+            login = login_field.value
+            password = password_field.value
+            birth_date = date_f.value
+            phone_number = phone_field.value
 
 
-        connection.commit()
-        cursor.close()
-        bottom_attention("Данные успешно обновлены")
-        page.update()
+            if role == "Студент":
+                query = """
+                    UPDATE student
+                    SET full_name = %s, `group` = %s, birth_date = %s
+                    WHERE idstudent = %s
+                """
+                cursor.execute(query, (full_name, group_value, birth_date, user_id))
+
+                query = """
+                    UPDATE accounts
+                    SET login = %s
+                    WHERE idstudent = %s
+                """
+                cursor.execute(query, (login, user_id))
+
+            elif role == "Преподаватель":
+
+                query = """
+                    UPDATE teacher
+                    SET full_name = %s, birth_date = %s, phone_number = %s
+                    WHERE idteacher = %s
+                """
+                cursor.execute(query, (full_name, birth_date, phone_number, user_id))
+
+                query = """
+                    UPDATE accounts
+                    SET login = %s
+                    WHERE idteacher = %s
+                """
+                cursor.execute(query, (login, user_id))
+
+                # Обновляем дисциплины преподавателя
+                cursor.execute("DELETE FROM teacher_subjects WHERE teacher = %s", (user_id,))
+                query = "INSERT INTO teacher_subjects (teacher, subject) VALUES (%s, %s)"
+                for discipline in disciplines:
+                    cursor.execute(query, (user_id, discipline))
+
+
+            if password:
+                hashed_password = generate_password_hash(password)
+                query = """
+                    UPDATE accounts
+                    SET login = %s, password = %s
+                    WHERE idstudent = %s OR idteacher = %s OR (idstudent = Null and idteacher = Null)
+                """
+                cursor.execute(query, (login, hashed_password, user_id, user_id))
+
+
+            connection.commit()
+            cursor.close()
+            bottom_attention("Данные успешно обновлены")
+            page.update()
+
+        except Error as e:
+            bottom_attention("Данные не обновлены, проверьте заполнение полей")
+            print(e)
 
     def delete_user(e):
+        nonlocal username
         cursor = connection.cursor()
         try:
             if role_field.value == "Преподаватель":
                 cursor.execute("DELETE FROM teacher WHERE `idteacher` = %s", (user_id,))
             elif role_field.value == "Студент":
                 cursor.execute("DELETE FROM student WHERE `idstudent` = %s", (user_id,))
+            elif role_field.value == "Администратор" and login_field.value != username:
+                cursor.execute("DELETE FROM accounts WHERE login = %s", (login_field.value,))
+            else:
+                bottom_attention("Вы не можете удалить свой профиль")
+                connection.commit()
+                cursor.close()
+                return
+
             connection.commit()
             cursor.close()
             bottom_attention("Пользватель удален успешно")
@@ -319,6 +345,7 @@ def open(page: ft.Page, connection, switch=None):
             page.update()
         except Error as e:
             print(e)
+            bottom_attention("Данные не найдены")
 
     discipline_dropdown = ft.Dropdown(
         label="Выберите дисциплину",
@@ -331,6 +358,7 @@ def open(page: ft.Page, connection, switch=None):
         options=[
             ft.dropdown.Option("Студент"),
             ft.dropdown.Option("Преподаватель"),
+            ft.dropdown.Option("Администратор")
         ],
         label="Роль",
         on_change=on_role_change,
@@ -344,15 +372,18 @@ def open(page: ft.Page, connection, switch=None):
                                padding=ft.padding.only(5,0,0,5), height=50, expand=True)],
         visible=False)
 
-    date_f = date_f = ft.TextField(hint_text='Дата', read_only=True, width=200, value=date.today().strftime("%d-%m-%Y"),
-                                   border=ft.InputBorder.NONE, content_padding=10, expand=True)
-    date_field = ft.Container(ft.Row([
+    date_f = date_f = ft.TextField(hint_text='Дата',read_only=True, width=200, value=date.today().strftime("%d-%m-%Y"),
+                        border=ft.InputBorder.NONE, content_padding=10, expand=True)
+
+    date_field = ft.Row([ft.Text("Дата рождения", theme_style=ft.TextThemeStyle.BODY_LARGE),
+                         ft.Container(ft.Row([
         date_f,
         ft.IconButton(
             icon=ft.icons.CALENDAR_MONTH,
             on_click=lambda e: page.open(ft.DatePicker(on_change=date_change))
         ),
-    ], width=300), border=ft.border.all(1, ft.colors.BLACK), border_radius=5)
+    ], width=300 ), border=ft.border.all(1, ft.colors.BLACK), border_radius=5)])
+
     login_field = ft.TextField(label="Логин", max_length=45)
     password_field = ft.TextField(label="Пароль", password=True, can_reveal_password=True, max_length=45)
     phone_field = ft.TextField(label="Номер телефона", max_length=20, visible=False)
@@ -412,7 +443,7 @@ def open(page: ft.Page, connection, switch=None):
                 alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
             ),
             group_field,
-            ft.Row([ft.Text("Дата рождения", theme_style=ft.TextThemeStyle.BODY_LARGE), date_field]),
+            date_field,
             login_field,
             password_field,
             full_name_field,

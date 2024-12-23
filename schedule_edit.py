@@ -116,8 +116,11 @@ def open(page: ft.Page, connection):
             snackbar.open = True
             page.update()
         except Error as e:
+            if e.errno == 1406:
+                snackbar.content = ft.Text("Номер кабинета слишком длинный")
+            else:
+                snackbar.content = ft.Text("Ошибка при сохранении расписании, возможно вы не выбрали группу")
             print(f"Ошибка при сохранении расписания: {e}")
-            snackbar.content = ft.Text("Ошибка при сохранении расписании, возможно вы не выбрали группу")
             snackbar.open = True
             page.update()
 
@@ -257,7 +260,7 @@ def open(page: ft.Page, connection):
         nonlocal disciplines
         table_row = ft.Row(
             controls=[
-                ft.TextField(border_radius=0, value=time, text_size=14, expand=True, border_color=ft.colors.GREY_400),
+                ft.TextField(border_radius=0, value=time, text_size=14, expand=True, border_color=ft.colors.GREY_400, read_only=True),
                 ft.Dropdown(options=disciplines,border_radius=0, width=350, border_color=ft.colors.GREY_400, icon_size=0, value=discipline),
                 ft.TextField(border_radius=0, text_size=14, expand=True, border_color=ft.colors.GREY_400, value=room),
                 ft.Dropdown(border_radius=0, width=250, border_color=ft.colors.GREY_400, value=type,

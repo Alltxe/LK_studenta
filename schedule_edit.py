@@ -17,7 +17,6 @@ def open(page: ft.Page, connection):
 
             # Проверка, выбрана ли группа и дата
             if not group_value or not date_f.value:
-                print("Пожалуйста, выберите группу и дату для загрузки расписания.")
                 return
 
             # Выполнение SQL-запроса
@@ -140,16 +139,36 @@ def open(page: ft.Page, connection):
             print(f"Ошибка при загрузке групп: {e}")
 
     def load_disciplines():
-        nonlocal disciplines
+        nonlocal disciplines, group_value
 
         try:
             cursor = connection.cursor()
-            cursor.execute("SELECT subject_name FROM subject")
+            # Получаем программу для выбранной группы
+            cursor.execute("""
+                SELECT program
+                FROM st_groups
+                WHERE idgroups = %s
+            """, (group_value,))
+            program_row = cursor.fetchone()
+            if not program_row:
+                print("Программа для выбранной группы не найдена.")
+                return
+
+            program = program_row[0]
+
+            # Получаем дисциплины для выбранной программы
+            cursor.execute("""
+                SELECT ps.subject
+                FROM program_subjects ps
+                JOIN subject s ON ps.subject = s.subject_name
+                WHERE ps.program = %s
+            """, (program,))
             rows = cursor.fetchall()
             disciplines = [row[0] for row in rows]
 
+            # Создаем список опций для Dropdown
             disciplines = [ft.dropdown.Option(discipline) for discipline in disciplines]
-
+            print(disciplines[0].key, disciplines[0].content, disciplines[0].text)
             page.update()
             cursor.close()
 
@@ -173,9 +192,6 @@ def open(page: ft.Page, connection):
         except Error as e:
             print(f"Ошибка при загрузке дисциплин: {e}")
 
-    def group_select(e):
-        global group_value
-        group_value = e.selection.value
 
     # Функция изменения даты
     def shift_date(e, delta):
@@ -197,7 +213,8 @@ def open(page: ft.Page, connection):
     def group_select(e):
         nonlocal group_value
         group_value = e.selection.value
-        load_schedule()
+        load_disciplines()  # Загружаем дисциплины для выбранной группы
+        load_schedule()  # Загружаем расписание
 
     group_autocomplete = ft.AutoComplete(on_select=group_select)
     group_field = ft.Column(
@@ -245,6 +262,7 @@ def open(page: ft.Page, connection):
 
     group_date_field = ft.Row(controls=[group_field, date_field], alignment=ft.MainAxisAlignment.SPACE_BETWEEN)
 
+
     # Таблица расписания
     def create_table_cell(text, expand = True, width = 350):
         return ft.Container(
@@ -261,7 +279,7 @@ def open(page: ft.Page, connection):
         table_row = ft.Row(
             controls=[
                 ft.TextField(border_radius=0, value=time, text_size=14, expand=True, border_color=ft.colors.GREY_400, read_only=True),
-                ft.Dropdown(options=disciplines,border_radius=0, width=350, border_color=ft.colors.GREY_400, icon_size=0, value=discipline),
+                ft.Dropdown(options=disciplines,border_radius=0, width=350, border_color=ft.colors.GREY_400, icon_size=0),
                 ft.TextField(border_radius=0, text_size=14, expand=True, border_color=ft.colors.GREY_400, value=room),
                 ft.Dropdown(border_radius=0, width=250, border_color=ft.colors.GREY_400, value=type,
                             options=[ft.dropdown.Option(option) for option in ['Лекция', 'Лабораторная работа', 'Практическая работа', 'Семинар', 'Консультация']]),
@@ -275,12 +293,11 @@ def open(page: ft.Page, connection):
 
     table_header = ft.Row(controls=[
         create_table_cell('Время'),
-        create_table_cell('Дисциплина', False),
+        create_table_cell('Дисциплина', False, 350),
         create_table_cell('Кабинет'),
         create_table_cell('Тип занятия', False, 250),
         create_table_cell('Преподаватель', False)
     ])
-    load_disciplines()
     load_teachers()
 
     table_rows = [create_table_row(time = '08:20 - 09:50'),

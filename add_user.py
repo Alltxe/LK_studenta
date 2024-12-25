@@ -5,7 +5,7 @@ from datetime import datetime
 from datetime import date
 
 
-def open(page: ft.Page, connection, switch=None):
+def openn(page: ft.Page, connection, switch=None):
     disciplines = []
     group_value = ""
 
@@ -127,8 +127,50 @@ def open(page: ft.Page, connection, switch=None):
             bottom_attention("Профиль не добавлен, проверьте поля")
             print(e)
 
+    def on_file_selected(e):
+        if file_picker.result and file_picker.result.files:
+            file_path = file_picker.result.files[0].path
+            try:
+                with open(file_path, 'r', encoding='utf-8') as f:
+                    # Предполагаем, что файл содержит строки в формате: "ФИО, группа, дата рождения, логин, пароль"
+                    students = [line.strip().split(",") for line in f.readlines()]
+                    cursor = connection.cursor()
+
+                    for student in students:
+                        if len(student) >= 5:  # Проверяем, что есть минимум ФИО, группа, дата рождения, логин и пароль
+                            full_name, group, birth_date, login, password = student[:5]
+
+                            # Проверяем, существует ли указанная группа
+                            cursor.execute("SELECT COUNT(*) FROM st_groups WHERE idgroups = %s", (group,))
+                            if cursor.fetchone()[0] == 0:
+                                bottom_attention(f"Группа '{group}' не найдена. Пропущена запись для '{full_name}'")
+                                continue
+
+                            # Добавляем запись в таблицу student
+                            cursor.execute(
+                                "INSERT INTO student (full_name, `group`, birth_date) VALUES (%s, %s, %s)",
+                                (full_name, group, birth_date)
+                            )
+
+                            # Получаем ID добавленного студента
+                            cursor.execute("SELECT LAST_INSERT_ID()")
+                            student_id = cursor.fetchone()[0]
+
+                            # Хэшируем пароль и добавляем запись в таблицу accounts
+                            hashed_password = generate_password_hash(password)
+                            cursor.execute(
+                                "INSERT INTO accounts (login, password, role, idstudent) VALUES (%s, %s, %s, %s)",
+                                (login, hashed_password, "student", student_id)
+                            )
+
+                    connection.commit()
+                    cursor.close()
+                    bottom_attention("Список студентов успешно загружен")
+            except Exception as e:
+                bottom_attention("Ошибка при загрузке списка студентов, возможно формат данных неверен")
+                print(f"Ошибка: {e}")
+
     def clear_page():
-        role_field.value = None
         login_field.value = ""
         password_field.value = ""
         full_name_field.value = ""
@@ -204,6 +246,10 @@ def open(page: ft.Page, connection, switch=None):
         nonlocal group_value
         group_value = e.selection.value
 
+
+    file_picker = ft.FilePicker(on_result=on_file_selected)
+    page.overlay.append(file_picker)
+
     # Поля и кнопки для добавления/удаления дисциплин
     discipline_dropdown = ft.Dropdown(
         label="Выберите дисциплину",
@@ -242,7 +288,7 @@ def open(page: ft.Page, connection, switch=None):
         ),
     ], width=300 ), border=ft.border.all(1, ft.colors.BLACK), border_radius=5)])
 
-    load_list_btn = ft.ElevatedButton(text="Загрузить список")
+    load_list_btn = ft.ElevatedButton(text="Загрузить список", on_click=lambda e: file_picker.pick_files(allow_multiple=False))
     login_field = ft.TextField(label="Логин", max_length=45)
     password_field = ft.TextField(label="Пароль", password=True, can_reveal_password=True, max_length=45)
     phone_field = ft.TextField(label="Номер телефона", max_length=20, visible=False)

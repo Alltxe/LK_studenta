@@ -51,7 +51,7 @@ def main(page: ft.Page):
         if target == "edit mode page":
             edit_user.open(page, connection, page_switch, username)
         elif target == "add mode page":
-            add_user.open(page, connection, page_switch)
+            add_user.openn(page, connection, page_switch)
         elif target == "main menu":
             main_student_menu.open(page, connection, group, fio, id)
         elif target == "schedule edit":

@@ -82,5 +82,4 @@ def generate_test_data(num_students=50, num_teachers=10):
     print(f"Сгенерировано {num_students} студентов и {num_teachers} преподавателей.")
 
 
-# Запуск генерации
 generate_test_data(120, 10)

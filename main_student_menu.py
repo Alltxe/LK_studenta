@@ -1,8 +1,5 @@
-
 import flet as ft
 from datetime import date, timedelta
-
-
 
 def open(page: ft.Page, connection, group, fio, id):
     page.theme_mode = ft.ThemeMode.LIGHT
@@ -13,7 +10,6 @@ def open(page: ft.Page, connection, group, fio, id):
     def get_day_schedule(selected_day):
         try:
             cursor = connection.cursor()
-
             query = """
             SELECT date, subject, location, class_type
             FROM schedule 
@@ -28,7 +24,6 @@ def open(page: ft.Page, connection, group, fio, id):
             print(f"Ошибка выполнения запроса: {err}")
             return []
 
-    # Загрузка ближайших заданий
     def get_upcoming_tasks():
         try:
             cursor = connection.cursor()
@@ -47,30 +42,52 @@ def open(page: ft.Page, connection, group, fio, id):
             print(f"Ошибка получения заданий: {err}")
             return []
 
+    def get_group_info(group_id):
+        try:
+            cursor = connection.cursor()
+            query = """
+            SELECT sg.course, sg.program
+            FROM st_groups sg
+            WHERE sg.idgroups = %s
+            """
+            cursor.execute(query, (group_id,))
+            group_info = cursor.fetchone()
+            cursor.close()
+            return group_info if group_info else (None, None)
+        except Exception as err:
+            print(f"Ошибка получения информации о группе: {err}")
+            return None, None
+
     def show_info(e):
         dialog = ft.AlertDialog(
             title=ft.Text("Детали задания"),
-            content=ft.Column([ft.Text(f"Дисциплина: {e.control.data[0]}"),
-                               ft.Text(f"Название: {e.control.data[1]}"),
-                               ft.Text(f"Срок сдачи: {e.control.data[2]}"),
-                               ft.Text(f"Статус: {'Выполнено' if e.control.data[4] == 1 else 'Не выполнено'}"),
-                               ft.Text(f"Описание: {e.control.data[3]}"),
-                               ], width=300, height=200,
-                              ),
+            content=ft.Column([
+                ft.Text(f"Дисциплина: {e.control.data[0]}"),
+                ft.Text(f"Название: {e.control.data[1]}"),
+                ft.Text(f"Срок сдачи: {e.control.data[2]}"),
+                ft.Text(f"Статус: {'Выполнено' if e.control.data[4] == 1 else 'Не выполнено'}"),
+                ft.Text(f"Описание: {e.control.data[3]}"),
+            ], width=300, height=200),
         )
         page.overlay.append(dialog)
         dialog.open = True
         page.update()
 
-    # Title section
+    course, program = get_group_info(group)
+
     title_text = ft.Text(f"Добро пожаловать, {fio}", style=ft.TextThemeStyle.HEADLINE_LARGE)
+    group_info_text = ft.Text(
+        f"Группа: {group} | Курс: {course} | Программа: {program}",
+        style=main_text
+    )
+    separator = ft.Divider(height=2, thickness=2)
 
     title_column = ft.Column(
-        controls=[title_text],
-        alignment=ft.MainAxisAlignment.CENTER
+        controls=[title_text, separator ,group_info_text],
+        alignment=ft.MainAxisAlignment.CENTER,
+        spacing=20
     )
 
-    # Schedule section
     schedule_title = ft.Text("Расписание на завтра", style=main_text)
     schedule_table = ft.DataTable(
         expand=True,
@@ -87,7 +104,6 @@ def open(page: ft.Page, connection, group, fio, id):
     for lesson in student_schedule:
         lesson_date, subject, location, class_type = lesson
         lesson_time = lesson_date.strftime('%H:%M')
-
         schedule_table.rows.append(ft.DataRow(cells=[
             ft.DataCell(ft.Text(lesson_time)),
             ft.DataCell(ft.Text(subject)),
@@ -95,26 +111,22 @@ def open(page: ft.Page, connection, group, fio, id):
             ft.DataCell(ft.Text(class_type))
         ]))
 
-    separator = ft.Divider(height=2, thickness=2)
+
 
     schedule_box = ft.Container(
         schedule_table,
         border_radius=8,
         border=ft.border.all(1, "black"),
         padding=10,
-        height=460,
+        height=370,
         alignment=ft.alignment.top_left
     )
 
-    # Task list section (Ближайшие задания)
-    # Task list section (Ближайшие задания)
     task_title = ft.Text("Ближайшие задания", style=main_text)
-
     task_list = ft.ListView(expand=True, spacing=10)
 
-    # Загрузка ближайших заданий
     upcoming_tasks = get_upcoming_tasks()
-    for task_name, deadline, descripton, status, subject in upcoming_tasks:
+    for task_name, deadline, description, status, subject in upcoming_tasks:
         status_text = "Выполнено" if status else "Не выполнено"
         deadline_text = deadline.strftime('%d-%m-%Y')
         task_row = ft.Row(
@@ -124,7 +136,7 @@ def open(page: ft.Page, connection, group, fio, id):
                 ft.IconButton(
                     icon=ft.icons.INFO,
                     on_click=show_info,
-                    data=(subject, task_name, deadline, descripton, status)
+                    data=(subject, task_name, deadline, description, status)
                 )
             ],
             alignment=ft.MainAxisAlignment.SPACE_BETWEEN
@@ -136,26 +148,20 @@ def open(page: ft.Page, connection, group, fio, id):
         border_radius=8,
         border=ft.border.all(1, "black"),
         padding=10,
-        height=460,  # Высота, в которой можно прокручивать задания
+        height=370,
         alignment=ft.alignment.top_right,
     )
-
 
     main_layout = ft.Column([
         title_column,
         separator,
         ft.Row(
-        controls=[
-            ft.Column([
-                schedule_title, schedule_box
-            ]),
-            ft.Column([
-                task_title, task_box
-            ], expand=True)
-        ],
-        spacing=20,
-        )],
-    spacing=10)
-
+            controls=[
+                ft.Column([schedule_title, schedule_box], expand=True),
+                ft.Column([task_title, task_box], expand=True)
+            ],
+            spacing=20,
+        )
+    ], spacing=10)
 
     page.add(main_layout)
